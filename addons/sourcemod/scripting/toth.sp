@@ -212,15 +212,10 @@ void FindObjectives(any data) {
 		PrepareFlag(index);
 	}
 
-	index = FindEntityByClassname(index, "team_train_watcher");
+	while((index = FindEntityByClassname(index, "team_train_watcher")) != -1) {
+		int train = GetEntPropEnt(index, Prop_Send, "m_hGlowEnt");
 
-	if(index > -1) {
-		index = -1;
-
-		//TODO: Get this to work
-		while((index = FindEntityByClassname(index, "func_tracktrain")) != -1) {
-			PreparePayload(index);
-		}
+		PreparePayload(train);
 	}
 }
 
@@ -565,7 +560,7 @@ public int OnTotalRequestCompleted(Handle request, bool failure, bool successful
 		int newTotal = ParseTotalJsonResponse(sBody);
 
 		if(newTotal > 0 && newTotal != gDonationTotal) {
-			gDonationTotal = 185325;
+			gDonationTotal = newTotal;
 			UpdateDonationEntities();
 		}
 	}

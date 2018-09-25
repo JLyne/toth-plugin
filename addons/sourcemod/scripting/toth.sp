@@ -28,7 +28,8 @@ enum DonationEntity {
 	//Ent references for 3 sets of digits
 	DEDigits1,
 	DEDigits2,
-	DEDigits3
+	DEDigits3,
+	DEDigits4
 }
 
 enum ObjectiveType {
@@ -66,6 +67,7 @@ public void OnPluginEnd() {
 		AcceptEntityInput(entity[DEDigits1], "Kill");
 		AcceptEntityInput(entity[DEDigits2], "Kill");
 		AcceptEntityInput(entity[DEDigits3], "Kill");
+		AcceptEntityInput(entity[DEDigits4], "Kill");
 	}
 }
 
@@ -210,16 +212,16 @@ void FindObjectives(any data) {
 		PrepareFlag(index);
 	}
 
-	//index = FindEntityByClassname(index, "team_train_watcher");
+	index = FindEntityByClassname(index, "team_train_watcher");
 
-	//if(index > -1) {
-		//index = -1;
+	if(index > -1) {
+		index = -1;
 
 		//TODO: Get this to work
 		while((index = FindEntityByClassname(index, "func_tracktrain")) != -1) {
 			PreparePayload(index);
 		}
-	//}
+	}
 }
 
 void SetupResupplyDonationEntities(int entity, DonationEntity donationEntity[DonationEntity]) {
@@ -263,6 +265,7 @@ void SetupResupplyDonationEntities(int entity, DonationEntity donationEntity[Don
 	donationEntity[DEDigits1] = CreateDonationDigit(false);
 	donationEntity[DEDigits2] = CreateDonationDigit(true);
 	donationEntity[DEDigits3] = CreateDonationDigit(false);
+	donationEntity[DEDigits4] = CreateDonationDigit(false, true);
 
 	angles[2] += 90.0;
 	angles[1] -= 180.0;
@@ -286,12 +289,19 @@ void SetupResupplyDonationEntities(int entity, DonationEntity donationEntity[Don
 	DispatchKeyValue(donationEntity[DEDigits3], "scale", scale);
 	TeleportEntity(donationEntity[DEDigits3], spritePosition, angles, NULL_VECTOR);
 
+	spritePosition[2] += (33.0 * donationEntity[DEScale]);
+
+	DispatchKeyValue(donationEntity[DEDigits4], "scale", scale);
+	TeleportEntity(donationEntity[DEDigits4], spritePosition, angles, NULL_VECTOR);
+
 	SetVariantString("!activator");
 	AcceptEntityInput(donationEntity[DEDigits1], "SetParent", entity, entity);
 	SetVariantString("!activator");
 	AcceptEntityInput(donationEntity[DEDigits2], "SetParent", entity, entity);
 	SetVariantString("!activator");
 	AcceptEntityInput(donationEntity[DEDigits3], "SetParent", entity, entity);
+	SetVariantString("!activator");
+	AcceptEntityInput(donationEntity[DEDigits4], "SetParent", entity, entity);
 }
 
 void SetupObjectiveDonationEntities(int entity, ObjectiveType type, DonationEntity donationEntity[DonationEntity]) {
@@ -308,6 +318,7 @@ void SetupObjectiveDonationEntities(int entity, ObjectiveType type, DonationEnti
 	donationEntity[DEDigits1] = CreateDonationDigit(false);
 	donationEntity[DEDigits2] = CreateDonationDigit(true);
 	donationEntity[DEDigits3] = CreateDonationDigit(false);
+	donationEntity[DEDigits4] = CreateDonationDigit(false, true);
 
 	switch(type) {
 		case ObjectiveType_ControlPoint :
@@ -348,6 +359,11 @@ void SetupObjectiveDonationEntities(int entity, ObjectiveType type, DonationEnti
 
 	DispatchKeyValue(donationEntity[DEDigits3], "scale", scale);
 	TeleportEntity(donationEntity[DEDigits3], spritePosition, angles, NULL_VECTOR);
+	
+	spritePosition[0] -= (33.0 * donationEntity[DEScale]);
+
+	TeleportEntity(donationEntity[DEDigits4], spritePosition, angles, NULL_VECTOR);
+	DispatchKeyValue(donationEntity[DEDigits4], "scale", scale);
 
 
 	SetVariantString("!activator");
@@ -356,6 +372,8 @@ void SetupObjectiveDonationEntities(int entity, ObjectiveType type, DonationEnti
 	AcceptEntityInput(donationEntity[DEDigits2], "SetParent", entity, entity);
 	SetVariantString("!activator");
 	AcceptEntityInput(donationEntity[DEDigits3], "SetParent", entity, entity);
+	SetVariantString("!activator");
+	AcceptEntityInput(donationEntity[DEDigits4], "SetParent", entity, entity);
 }
 
 void PrepareControlPoint(int entity) {
@@ -398,6 +416,7 @@ void PreparePayload(int entity) {
 	gDonationEntities.PushArray(donationEntity[0]);
 }
 
+//TODO: Move to cfg
 void ApplyMapTweaks(DonationEntity donationEntity[DonationEntity], float spritePosition[3], float spriteAngles[3]) {
 	char map[32];
 	char name[32];
@@ -452,9 +471,11 @@ void ParentControlPointDonationEntities(any index) {
 	AcceptEntityInput(donationEntity[DEDigits2], "SetParentAttachmentMaintainOffset");
 	SetVariantString("donations");
 	AcceptEntityInput(donationEntity[DEDigits3], "SetParentAttachmentMaintainOffset");
+	SetVariantString("donations");
+	AcceptEntityInput(donationEntity[DEDigits4], "SetParentAttachmentMaintainOffset");
 }
 
-int CreateDonationDigit(bool comma) {
+int CreateDonationDigit(bool comma, bool startBlank = false) {
 	int entity = CreateEntityByName("env_sprite_oriented");
 
 	if(comma) {
@@ -471,9 +492,21 @@ int CreateDonationDigit(bool comma) {
 
 	DispatchSpawn(entity);
 	AcceptEntityInput(entity, "ShowSprite");
+	SetVariantFloat(244.0);
+	AcceptEntityInput(entity, "ColorRedValue");
+	SetVariantFloat(116.0);
+	AcceptEntityInput(entity, "ColorGreenValue");
+	SetVariantFloat(37.0);
+	AcceptEntityInput(entity, "ColorBlueValue");
 
-	SetEntPropFloat(entity, Prop_Data, "m_flFrame", 113.0);
-	SetEntPropFloat(entity, Prop_Send, "m_flFrame", 113.0);
+	if(startBlank) {
+		SetEntPropFloat(entity, Prop_Data, "m_flFrame", 110.0);
+		SetEntPropFloat(entity, Prop_Send, "m_flFrame", 110.0);
+	} else {
+		SetEntPropFloat(entity, Prop_Data, "m_flFrame", 113.0);
+		SetEntPropFloat(entity, Prop_Send, "m_flFrame", 113.0);
+	}
+
 	SetEntPropFloat(entity, Prop_Send, "m_flGlowProxySize", 64.0);
 	SetEntPropFloat(entity, Prop_Data, "m_flGlowProxySize", 64.0);
 	SetEntPropFloat(entity, Prop_Send, "m_flHDRColorScale", 1.0);
@@ -532,7 +565,7 @@ public int OnTotalRequestCompleted(Handle request, bool failure, bool successful
 		int newTotal = ParseTotalJsonResponse(sBody);
 
 		if(newTotal > 0 && newTotal != gDonationTotal) {
-			gDonationTotal = newTotal;
+			gDonationTotal = 185325;
 			UpdateDonationEntities();
 		}
 	}
@@ -572,13 +605,25 @@ public int ParseTotalJsonResponse(const char[] json) {
 }
 
 public int UpdateDonationEntities() {
-	float digits1 = float(gDonationTotal % 100);
-	float digits2 = float((gDonationTotal / 100) % 100);
-	float digits3 = float((gDonationTotal / 10000) % 100);
+	float digits[4] = { 110.0, 110.0, 110.0, 110.0 };
+	int divisor = 1;
 	bool milestone = false;
 
-	if(digits3 < 10.0) {
-		digits3 += 100.0;
+	//Divide total into groups of 2 digits and work out which sprite frame to display for each
+	for(int i = 0; i < 4; i++) {
+		float amount = float((gDonationTotal / divisor) % 100);
+
+		if(!amount && gDonationTotal < divisor) { //Total is below the range of this digit, display $ sign and skip the rest
+			digits[i] = 111.0; //111th frame is empty
+			break;
+		} else if((amount && amount < 10.0) && (gDonationTotal < (divisor * 100))) { //Total is within range but only uses one of the 2 numbers, display with $ sign
+			digits[i] = amount + 100.0; //Frames 100 - 109 are single numbers with dollar signs
+			break;
+		} else { //Total uses both numbers within this digit, display normally
+			digits[i] = amount;
+		}
+
+		divisor *= 100;
 	}
 
 	if((gDonationTotal - (gDonationTotal % 1000)) > gLastMilestone) {
@@ -591,9 +636,10 @@ public int UpdateDonationEntities() {
 
 		gDonationEntities.GetArray(i, entity[0], view_as<int>(DonationEntity));
 
-		SetEntPropFloat(entity[DEDigits1], Prop_Send, "m_flFrame", digits1);
-		SetEntPropFloat(entity[DEDigits2], Prop_Send, "m_flFrame", digits2);
-		SetEntPropFloat(entity[DEDigits3], Prop_Send, "m_flFrame", digits3);
+		SetEntPropFloat(entity[DEDigits1], Prop_Send, "m_flFrame", digits[0]);
+		SetEntPropFloat(entity[DEDigits2], Prop_Send, "m_flFrame", digits[1]);
+		SetEntPropFloat(entity[DEDigits3], Prop_Send, "m_flFrame", digits[2]);
+		SetEntPropFloat(entity[DEDigits4], Prop_Send, "m_flFrame", digits[3]);
 
 		if(milestone) {
 			char sound[PLATFORM_MAX_PATH];

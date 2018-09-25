@@ -183,23 +183,17 @@ public void SetDuckModel(any entity) {
 }
 
 void FindResupplyCabinets(any data) {
-	ArrayList cabinets = new ArrayList();
 	int index = -1;
 	
-	//Get prop targetnames for all resupply areas
+	//Add total to cabinet prop for each trigger
 	while((index = FindEntityByClassname(index, "func_regenerate")) != -1) {
-		cabinets.Push(GetEntPropEnt(index, Prop_Data, "m_hAssociatedModel"));
-	}
-
-	for(int i = 0; i < cabinets.Length; i++) {
-		int entity = cabinets.Get(i);
+		int entity = GetEntPropEnt(index, Prop_Data, "m_hAssociatedModel");
 		DonationEntity donationEntity[DonationEntity];
 
 		SetupResupplyDonationEntities(entity, donationEntity);
 		gDonationEntities.PushArray(donationEntity[0]);
 	}
 }
-
 
 void FindObjectives(any data) {
 	int index = -1;

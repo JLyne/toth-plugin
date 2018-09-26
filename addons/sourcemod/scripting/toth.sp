@@ -20,35 +20,38 @@ public Plugin myinfo =
 	url = "http://www.sourcemod.net/"
 };
 
-enum DonationEntity {
-	DEParent,
-	Float:DEScale,
-	ObjectiveType:DEType,
+//Represents an active donation total linked to an entity on the map
+enum DonationTotal {
+	DTParent,
+	Float:DTScale,
+	EntityType:DTType,
 
-	//Ent references for 3 sets of digits
-	DEDigits1,
-	DEDigits2,
-	DEDigits3,
-	DEDigits4
+	//Ent references for 4 sets of digits
+	DTDigits1,
+	DTDigits2,
+	DTDigits3,
+	DTDigits4
 }
 
-enum ObjectiveType {
-	ObjectiveType_None = 0,
-	ObjectiveType_ControlPoint = 1,
-	ObjectiveType_PayloadCart = 2,
-	ObjectiveType_Intel = 3,
+enum EntityType {
+	EntityType_None = 0,
+	EntityType_ControlPoint = 1,
+	EntityType_PayloadCart = 2,
+	EntityType_Intel = 3,
 };
 
+int gDonationTotal = 0;
+int gDigitsRequired = 0;
+int gLastMilestone = 0;
+
 ArrayList gDuckModels;
-ArrayList gDonationEntities;
+ArrayList gDonationTotals;
 
 Handle gDonationTimer = INVALID_HANDLE;
-int gDonationTotal = 0;
-int gLastMilestone = 0;
 
 public void OnPluginStart() {
 	gDuckModels = new ArrayList(PLATFORM_MAX_PATH);
-	gDonationEntities = new ArrayList(view_as<int>(DonationEntity));
+	gDonationTotals = new ArrayList(view_as<int>(DonationTotal));
 
 	gDuckModels.PushString("models/blap/bonus_blap.mdl");
 	gDuckModels.PushString("models/blap/bonus_blap_2.mdl");
@@ -59,20 +62,20 @@ public void OnPluginStart() {
 }
 
 public void OnPluginEnd() {
-	for(int i = 0; i < gDonationEntities.Length; i++) {
-		DonationEntity entity[DonationEntity];
+	for(int i = 0; i < gDonationTotals.Length; i++) {
+		DonationTotal entity[DonationTotal];
 
-		gDonationEntities.GetArray(i, entity[0], view_as<int>(DonationEntity));
+		gDonationTotals.GetArray(i, entity[0], view_as<int>(DonationTotal));
 
-		AcceptEntityInput(entity[DEDigits1], "Kill");
-		AcceptEntityInput(entity[DEDigits2], "Kill");
-		AcceptEntityInput(entity[DEDigits3], "Kill");
-		AcceptEntityInput(entity[DEDigits4], "Kill");
+		AcceptEntityInput(entity[DTDigits1], "Kill");
+		AcceptEntityInput(entity[DTDigits2], "Kill");
+		AcceptEntityInput(entity[DTDigits3], "Kill");
+		AcceptEntityInput(entity[DTDigits4], "Kill");
 	}
 }
 
 public void OnMapStart() {
-	gDonationEntities.Clear();
+	gDonationTotals.Clear();
 	gDonationTotal = 0;
 
 	for(int i = 0; i < gDuckModels.Length; i++) {
@@ -188,10 +191,10 @@ void FindResupplyCabinets(any data) {
 	//Add total to cabinet prop for each trigger
 	while((index = FindEntityByClassname(index, "func_regenerate")) != -1) {
 		int entity = GetEntPropEnt(index, Prop_Data, "m_hAssociatedModel");
-		DonationEntity donationEntity[DonationEntity];
+		DonationTotal donationTotal[DonationTotal];
 
-		SetupResupplyDonationEntities(entity, donationEntity);
-		gDonationEntities.PushArray(donationEntity[0]);
+		SetupResupplyDonationEntities(entity, donationTotal);
+		gDonationTotals.PushArray(donationTotal[0]);
 	}
 }
 
@@ -207,6 +210,7 @@ void FindObjectives(any data) {
 		PrepareFlag(index);
 	}
 
+	//Add total to payload train for each watcher
 	while((index = FindEntityByClassname(index, "team_train_watcher")) != -1) {
 		int train = GetEntPropEnt(index, Prop_Send, "m_hGlowEnt");
 
@@ -214,7 +218,7 @@ void FindObjectives(any data) {
 	}
 }
 
-void SetupResupplyDonationEntities(int entity, DonationEntity donationEntity[DonationEntity]) {
+void SetupResupplyDonationEntities(int entity, DonationTotal donationTotal[DonationTotal]) {
 	float origin[3]; //Position of entity center
 	float angles[3]; //Entity rotation
 
@@ -249,52 +253,52 @@ void SetupResupplyDonationEntities(int entity, DonationEntity donationEntity[Don
 	//Add half the the entity height to get half way point
 	spritePosition[2] += ((FloatAbs(mins[2]) + FloatAbs(maxs[2])) / 2);
 
-	donationEntity[DEParent] = entity;
-	donationEntity[DEType] = ObjectiveType_None;
-	donationEntity[DEScale] = 1.0;
-	donationEntity[DEDigits1] = CreateDonationDigit(false);
-	donationEntity[DEDigits2] = CreateDonationDigit(true);
-	donationEntity[DEDigits3] = CreateDonationDigit(false);
-	donationEntity[DEDigits4] = CreateDonationDigit(false, true);
+	donationTotal[DTParent] = entity;
+	donationTotal[DTType] = EntityType_None;
+	donationTotal[DTScale] = 1.0;
+	donationTotal[DTDigits1] = CreateDonationDigit(false);
+	donationTotal[DTDigits2] = CreateDonationDigit(true);
+	donationTotal[DTDigits3] = CreateDonationDigit(false);
+	donationTotal[DTDigits4] = CreateDonationDigit(false, true);
 
 	angles[2] += 90.0;
 	angles[1] -= 180.0;
 
-	ApplyMapTweaks(donationEntity, spritePosition, angles);
+	ApplyMapTweaks(donationTotal, spritePosition, angles);
 
-	Format(scale, sizeof(scale), "%00.2f", 0.25 * donationEntity[DEScale]);
+	Format(scale, sizeof(scale), "%00.2f", 0.25 * donationTotal[DTScale]);
 
-	spritePosition[2] -= (38.0 * donationEntity[DEScale]);
+	spritePosition[2] -= (38.0 * donationTotal[DTScale]);
 
-	DispatchKeyValue(donationEntity[DEDigits1], "scale", scale);
-	TeleportEntity(donationEntity[DEDigits1], spritePosition, angles, NULL_VECTOR);
+	DispatchKeyValue(donationTotal[DTDigits1], "scale", scale);
+	TeleportEntity(donationTotal[DTDigits1], spritePosition, angles, NULL_VECTOR);
 
-	spritePosition[2] += (33.0 * donationEntity[DEScale]);
+	spritePosition[2] += (33.0 * donationTotal[DTScale]);
 
-	DispatchKeyValue(donationEntity[DEDigits2], "scale", scale);
-	TeleportEntity(donationEntity[DEDigits2], spritePosition, angles, NULL_VECTOR);
+	DispatchKeyValue(donationTotal[DTDigits2], "scale", scale);
+	TeleportEntity(donationTotal[DTDigits2], spritePosition, angles, NULL_VECTOR);
 
-	spritePosition[2] += (33.0 * donationEntity[DEScale]);
+	spritePosition[2] += (33.0 * donationTotal[DTScale]);
 
-	DispatchKeyValue(donationEntity[DEDigits3], "scale", scale);
-	TeleportEntity(donationEntity[DEDigits3], spritePosition, angles, NULL_VECTOR);
+	DispatchKeyValue(donationTotal[DTDigits3], "scale", scale);
+	TeleportEntity(donationTotal[DTDigits3], spritePosition, angles, NULL_VECTOR);
 
-	spritePosition[2] += (33.0 * donationEntity[DEScale]);
+	spritePosition[2] += (33.0 * donationTotal[DTScale]);
 
-	DispatchKeyValue(donationEntity[DEDigits4], "scale", scale);
-	TeleportEntity(donationEntity[DEDigits4], spritePosition, angles, NULL_VECTOR);
+	DispatchKeyValue(donationTotal[DTDigits4], "scale", scale);
+	TeleportEntity(donationTotal[DTDigits4], spritePosition, angles, NULL_VECTOR);
 
 	SetVariantString("!activator");
-	AcceptEntityInput(donationEntity[DEDigits1], "SetParent", entity, entity);
+	AcceptEntityInput(donationTotal[DTDigits1], "SetParent", entity, entity);
 	SetVariantString("!activator");
-	AcceptEntityInput(donationEntity[DEDigits2], "SetParent", entity, entity);
+	AcceptEntityInput(donationTotal[DTDigits2], "SetParent", entity, entity);
 	SetVariantString("!activator");
-	AcceptEntityInput(donationEntity[DEDigits3], "SetParent", entity, entity);
+	AcceptEntityInput(donationTotal[DTDigits3], "SetParent", entity, entity);
 	SetVariantString("!activator");
-	AcceptEntityInput(donationEntity[DEDigits4], "SetParent", entity, entity);
+	AcceptEntityInput(donationTotal[DTDigits4], "SetParent", entity, entity);
 }
 
-void SetupObjectiveDonationEntities(int entity, ObjectiveType type, DonationEntity donationEntity[DonationEntity]) {
+void SetupObjectiveDonationEntities(int entity, EntityType type, DonationTotal donationTotal[DonationTotal]) {
 	float spritePosition[3]; //Position of entity center
 	float angles[3] = { 0.0, 90.0, 0.0 }; //Entity rotation
 	char scale[10];
@@ -302,90 +306,90 @@ void SetupObjectiveDonationEntities(int entity, ObjectiveType type, DonationEnti
 	//Get Stuff
 	GetEntPropVector(entity, Prop_Send, "m_vecOrigin", spritePosition);
 
-	donationEntity[DEParent] = entity;
-	donationEntity[DEType] = type;
-	donationEntity[DEScale] = 1.0;
-	donationEntity[DEDigits1] = CreateDonationDigit(false);
-	donationEntity[DEDigits2] = CreateDonationDigit(true);
-	donationEntity[DEDigits3] = CreateDonationDigit(false);
-	donationEntity[DEDigits4] = CreateDonationDigit(false, true);
+	donationTotal[DTParent] = entity;
+	donationTotal[DTType] = type;
+	donationTotal[DTScale] = 1.0;
+	donationTotal[DTDigits1] = CreateDonationDigit(false);
+	donationTotal[DTDigits2] = CreateDonationDigit(true);
+	donationTotal[DTDigits3] = CreateDonationDigit(false);
+	donationTotal[DTDigits4] = CreateDonationDigit(false, true);
 
 	switch(type) {
-		case ObjectiveType_ControlPoint :
+		case EntityType_ControlPoint :
 		{
 			//Position above control point hologram
 			spritePosition[2] += 190.0;
 		}
 
-		case ObjectiveType_PayloadCart :
+		case EntityType_PayloadCart :
 		{
 			//Position above control point hologram
 			spritePosition[2] += 50.0;
 		}
 
-		case ObjectiveType_Intel :
+		case EntityType_Intel :
 		{
 			//Position above control point hologram
 			spritePosition[2] += 30.0;
 		}
 	}
 	
-	ApplyMapTweaks(donationEntity, spritePosition, angles);
+	ApplyMapTweaks(donationTotal, spritePosition, angles);
 
-	Format(scale, sizeof(scale), "%00.2f", 0.25 * donationEntity[DEScale]);
+	Format(scale, sizeof(scale), "%00.2f", 0.25 * donationTotal[DTScale]);
 
 	//Start to the left of the center
-	spritePosition[0] += (30.0 * donationEntity[DEScale]); //22 30 34 40
+	spritePosition[0] += (30.0 * donationTotal[DTScale]); //22 30 34 40
 
-	DispatchKeyValue(donationEntity[DEDigits1], "scale", scale);
-	TeleportEntity(donationEntity[DEDigits1], spritePosition, angles, NULL_VECTOR);
+	DispatchKeyValue(donationTotal[DTDigits1], "scale", scale);
+	TeleportEntity(donationTotal[DTDigits1], spritePosition, angles, NULL_VECTOR);
 
-	spritePosition[0] -= (33.0 * donationEntity[DEScale]);
+	spritePosition[0] -= (33.0 * donationTotal[DTScale]);
 
-	DispatchKeyValue(donationEntity[DEDigits2], "scale", scale);
-	TeleportEntity(donationEntity[DEDigits2], spritePosition, angles, NULL_VECTOR);
+	DispatchKeyValue(donationTotal[DTDigits2], "scale", scale);
+	TeleportEntity(donationTotal[DTDigits2], spritePosition, angles, NULL_VECTOR);
 
-	spritePosition[0] -= (33.0 * donationEntity[DEScale]);
+	spritePosition[0] -= (33.0 * donationTotal[DTScale]);
 
-	DispatchKeyValue(donationEntity[DEDigits3], "scale", scale);
-	TeleportEntity(donationEntity[DEDigits3], spritePosition, angles, NULL_VECTOR);
+	DispatchKeyValue(donationTotal[DTDigits3], "scale", scale);
+	TeleportEntity(donationTotal[DTDigits3], spritePosition, angles, NULL_VECTOR);
 	
-	spritePosition[0] -= (33.0 * donationEntity[DEScale]);
+	spritePosition[0] -= (33.0 * donationTotal[DTScale]);
 
-	TeleportEntity(donationEntity[DEDigits4], spritePosition, angles, NULL_VECTOR);
-	DispatchKeyValue(donationEntity[DEDigits4], "scale", scale);
+	TeleportEntity(donationTotal[DTDigits4], spritePosition, angles, NULL_VECTOR);
+	DispatchKeyValue(donationTotal[DTDigits4], "scale", scale);
 
 
 	SetVariantString("!activator");
-	AcceptEntityInput(donationEntity[DEDigits1], "SetParent", entity, entity);
+	AcceptEntityInput(donationTotal[DTDigits1], "SetParent", entity, entity);
 	SetVariantString("!activator");
-	AcceptEntityInput(donationEntity[DEDigits2], "SetParent", entity, entity);
+	AcceptEntityInput(donationTotal[DTDigits2], "SetParent", entity, entity);
 	SetVariantString("!activator");
-	AcceptEntityInput(donationEntity[DEDigits3], "SetParent", entity, entity);
+	AcceptEntityInput(donationTotal[DTDigits3], "SetParent", entity, entity);
 	SetVariantString("!activator");
-	AcceptEntityInput(donationEntity[DEDigits4], "SetParent", entity, entity);
+	AcceptEntityInput(donationTotal[DTDigits4], "SetParent", entity, entity);
 }
 
 void PrepareControlPoint(int entity) {
 	entity = EntRefToEntIndex(entity);
 
 	if(entity != INVALID_ENT_REFERENCE) {
-		DonationEntity donationEntity[DonationEntity];
+		DonationTotal donationTotal[DonationTotal];
 
 		DispatchKeyValue(entity, "team_model_3", HOLOGRAM_MODEL);
 		DispatchKeyValue(entity, "team_model_2", HOLOGRAM_MODEL);
 		DispatchKeyValue(entity, "team_model_0", HOLOGRAM_MODEL);
 		SetEntityModel(entity, HOLOGRAM_MODEL);
 
-		SetupObjectiveDonationEntities(entity, ObjectiveType_ControlPoint, donationEntity);
-		int i = gDonationEntities.PushArray(donationEntity[0]);
+		SetupObjectiveDonationEntities(entity, EntityType_ControlPoint, donationTotal);
+		int i = gDonationTotals.PushArray(donationTotal[0]);
 
 		RequestFrame(ParentControlPointDonationEntities, i);
 	}
 }
 
 void PrepareFlag(int entity) {
-	DonationEntity donationEntity[DonationEntity];
+	DonationTotal donationTotal[DonationTotal];
 
 	SetEntityModel(entity, "models/items/currencypack_large.mdl");
 
@@ -395,74 +399,74 @@ void PrepareFlag(int entity) {
 	origin[2] -= 10.0;
 	TeleportEntity(entity, origin, NULL_VECTOR, NULL_VECTOR);
 
-	SetupObjectiveDonationEntities(entity, ObjectiveType_Intel, donationEntity);
-	gDonationEntities.PushArray(donationEntity[0]);
+	SetupObjectiveDonationEntities(entity, EntityType_Intel, donationTotal);
+	gDonationTotals.PushArray(donationTotal[0]);
 }
 
 void PreparePayload(int entity) {
-	DonationEntity donationEntity[DonationEntity];
+	DonationTotal donationTotal[DonationTotal];
 
-	SetupObjectiveDonationEntities(entity, ObjectiveType_PayloadCart, donationEntity);
-	gDonationEntities.PushArray(donationEntity[0]);
+	SetupObjectiveDonationEntities(entity, EntityType_PayloadCart, donationTotal);
+	gDonationTotals.PushArray(donationTotal[0]);
 }
 
 //TODO: Move to cfg
-void ApplyMapTweaks(DonationEntity donationEntity[DonationEntity], float spritePosition[3], float spriteAngles[3]) {
+void ApplyMapTweaks(DonationTotal donationTotal[DonationTotal], float spritePosition[3], float spriteAngles[3]) {
 	char map[32];
 	char name[32];
 
 	GetCurrentMap(map, sizeof(map));
-	GetEntPropString(donationEntity[DEParent], Prop_Data, "m_iName", name, sizeof(name));
+	GetEntPropString(donationTotal[DTParent], Prop_Data, "m_iName", name, sizeof(name));
 
-	if(StrEqual(map, "plr_bananabay") && donationEntity[DEType] == ObjectiveType_ControlPoint) {
+	if(StrEqual(map, "plr_bananabay") && donationTotal[DTType] == EntityType_ControlPoint) {
 		spritePosition[2] -= 75.0;
 	}
 
-	if(StrEqual(map, "pl_frontier_final") && donationEntity[DEType] == ObjectiveType_PayloadCart) {
+	if(StrEqual(map, "pl_frontier_final") && donationTotal[DTType] == EntityType_PayloadCart) {
 		spritePosition[2] += 110.0;
 	}
 
-	if(StrEqual(name, "objective_train") && donationEntity[DEType] == ObjectiveType_PayloadCart) {
-		donationEntity[DEScale] = 5.0;
+	if(StrEqual(name, "objective_train") && donationTotal[DTType] == EntityType_PayloadCart) {
+		donationTotal[DTScale] = 5.0;
 		spritePosition[2] -= 75.0;
 		spritePosition[0] -= 1775.0;
 	}
 
-	if(StrEqual(map, "cp_overgrown_rc5a") && donationEntity[DEType] == ObjectiveType_PayloadCart) {
-		donationEntity[DEScale] = 2.0;
+	if(StrEqual(map, "cp_overgrown_rc5a") && donationTotal[DTType] == EntityType_PayloadCart) {
+		donationTotal[DTScale] = 2.0;
 		spritePosition[1] -= 1750.0;
 		spritePosition[2] -= 60.0;
 	}
 
-	if(StrEqual(map, "koth_traingrid_b2") && donationEntity[DEType] == ObjectiveType_PayloadCart) {
+	if(StrEqual(map, "koth_traingrid_b2") && donationTotal[DTType] == EntityType_PayloadCart) {
 		spritePosition[2] += 55.0;
-		donationEntity[DEScale] = 5.0;
+		donationTotal[DTScale] = 5.0;
 	}
 
-	if(StrEqual(map, "koth_conveyor_v2") && donationEntity[DEType] == ObjectiveType_ControlPoint) {
+	if(StrEqual(map, "koth_conveyor_v2") && donationTotal[DTType] == EntityType_ControlPoint) {
 		spritePosition[2] -= 1450.0;
-		donationEntity[DEScale] = 8.0;
+		donationTotal[DTScale] = 8.0;
 	}
 
-	if(StrEqual(map, "koth_weeeeeeeeeeeeeeeeell_rc2") && donationEntity[DEType] == ObjectiveType_PayloadCart) {
+	if(StrEqual(map, "koth_weeeeeeeeeeeeeeeeell_rc2") && donationTotal[DTType] == EntityType_PayloadCart) {
 		spritePosition[2] += 40.0;
-		donationEntity[DEScale] = 5.0;
+		donationTotal[DTScale] = 5.0;
 	}
 }
 
 void ParentControlPointDonationEntities(any index) {
-	DonationEntity donationEntity[DonationEntity];
+	DonationTotal donationTotal[DonationTotal];
 
-	gDonationEntities.GetArray(index, donationEntity[0], view_as<int>(DonationEntity));
+	gDonationTotals.GetArray(index, donationTotal[0], view_as<int>(DonationTotal));
 	
 	SetVariantString("donations");
-	AcceptEntityInput(donationEntity[DEDigits1], "SetParentAttachmentMaintainOffset");
+	AcceptEntityInput(donationTotal[DTDigits1], "SetParentAttachmentMaintainOffset");
 	SetVariantString("donations");
-	AcceptEntityInput(donationEntity[DEDigits2], "SetParentAttachmentMaintainOffset");
+	AcceptEntityInput(donationTotal[DTDigits2], "SetParentAttachmentMaintainOffset");
 	SetVariantString("donations");
-	AcceptEntityInput(donationEntity[DEDigits3], "SetParentAttachmentMaintainOffset");
+	AcceptEntityInput(donationTotal[DTDigits3], "SetParentAttachmentMaintainOffset");
 	SetVariantString("donations");
-	AcceptEntityInput(donationEntity[DEDigits4], "SetParentAttachmentMaintainOffset");
+	AcceptEntityInput(donationTotal[DTDigits4], "SetParentAttachmentMaintainOffset");
 }
 
 int CreateDonationDigit(bool comma, bool startBlank = false) {
@@ -597,11 +601,13 @@ public int ParseTotalJsonResponse(const char[] json) {
 public int UpdateDonationEntities() {
 	float digits[4] = { 110.0, 110.0, 110.0, 110.0 };
 	int divisor = 1;
+	int digitsRequired = 0;
 	bool milestone = false;
 
 	//Divide total into groups of 2 digits and work out which sprite frame to display for each
 	for(int i = 0; i < 4; i++) {
 		float amount = float((gDonationTotal / divisor) % 100);
+		digitsRequired++;
 
 		if(!amount && gDonationTotal < divisor) { //Total is below the range of this digit, display $ sign and skip the rest
 			digits[i] = 111.0; //111th frame is empty
@@ -616,32 +622,35 @@ public int UpdateDonationEntities() {
 		divisor *= 100;
 	}
 
+	if(digitsRequired != gDigitsRequired) {
+
+	}
 
 	if((gDonationTotal - (gDonationTotal % 1000)) > gLastMilestone) {
 		gLastMilestone = (gDonationTotal - (gDonationTotal % 1000));
 		milestone = true;
 	}
 
-	for(int i = 0; i < gDonationEntities.Length; i++) {
-		DonationEntity entity[DonationEntity];
+	for(int i = 0; i < gDonationTotals.Length; i++) {
+		DonationTotal entity[DonationTotal];
 
-		gDonationEntities.GetArray(i, entity[0], view_as<int>(DonationEntity));
+		gDonationTotals.GetArray(i, entity[0], view_as<int>(DonationTotal));
 
-		SetEntPropFloat(entity[DEDigits1], Prop_Send, "m_flFrame", digits[0]);
-		SetEntPropFloat(entity[DEDigits2], Prop_Send, "m_flFrame", digits[1]);
-		SetEntPropFloat(entity[DEDigits3], Prop_Send, "m_flFrame", digits[2]);
-		SetEntPropFloat(entity[DEDigits4], Prop_Send, "m_flFrame", digits[3]);
+		SetEntPropFloat(entity[DTDigits1], Prop_Send, "m_flFrame", digits[0]);
+		SetEntPropFloat(entity[DTDigits2], Prop_Send, "m_flFrame", digits[1]);
+		SetEntPropFloat(entity[DTDigits3], Prop_Send, "m_flFrame", digits[2]);
+		SetEntPropFloat(entity[DTDigits4], Prop_Send, "m_flFrame", digits[3]);
 
 		if(milestone) {
 			char sound[PLATFORM_MAX_PATH];
 
 			Format(sound, PLATFORM_MAX_PATH, "misc/happy_birthday_tf_%02i.wav", GetRandomInt(1, 29));
 
-			EmitSoundToAll(sound, entity[DEDigits3]);
-			TE_Particle("bday_confetti", NULL_VECTOR, NULL_VECTOR, NULL_VECTOR, entity[DEDigits2]);
+			EmitSoundToAll(sound, entity[DTDigits3]);
+			TE_Particle("bday_confetti", NULL_VECTOR, NULL_VECTOR, NULL_VECTOR, entity[DTDigits2]);
 		}
 		
-		TE_Particle("repair_claw_heal_blue", NULL_VECTOR, NULL_VECTOR, NULL_VECTOR, entity[DEDigits3]);
+		TE_Particle("repair_claw_heal_blue", NULL_VECTOR, NULL_VECTOR, NULL_VECTOR, entity[DTDigits3]);
 	}
 }
 

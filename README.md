@@ -1,2 +1,2 @@
-# charity-plugin
-Sourcemod plugin for charity events. Displays donation total ingame among other things.
+# toth-plugin
+Sourcemod plugin for TOTH 2018. Displays donation total ingame among other things.

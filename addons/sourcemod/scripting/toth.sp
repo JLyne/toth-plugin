@@ -13,9 +13,9 @@
 
 public Plugin myinfo = 
 {
-	name = "Blap stuff",
+	name = "Toth stuff",
 	author = "Jim",
-	description = "Server blapification",
+	description = "Server tothification",
 	version = PLUGIN_VERSION,
 	url = "http://www.sourcemod.net/"
 };
@@ -195,6 +195,7 @@ void FindResupplyCabinets(any data) {
 	}
 }
 
+
 void FindObjectives(any data) {
 	int index = -1;
 
@@ -334,7 +335,7 @@ void SetupObjectiveDonationEntities(int entity, ObjectiveType type, DonationEnti
 	Format(scale, sizeof(scale), "%00.2f", 0.25 * donationEntity[DEScale]);
 
 	//Start to the left of the center
-	spritePosition[0] += (30.0 * donationEntity[DEScale]);
+	spritePosition[0] += (30.0 * donationEntity[DEScale]); //22 30 34 40
 
 	DispatchKeyValue(donationEntity[DEDigits1], "scale", scale);
 	TeleportEntity(donationEntity[DEDigits1], spritePosition, angles, NULL_VECTOR);
@@ -614,6 +615,7 @@ public int UpdateDonationEntities() {
 
 		divisor *= 100;
 	}
+
 
 	if((gDonationTotal - (gDonationTotal % 1000)) > gLastMilestone) {
 		gLastMilestone = (gDonationTotal - (gDonationTotal % 1000));

@@ -1,4 +1,5 @@
-stock bool CheckMapConfig() {
+
+stock bool LoadMapConfig() {
 	char map[50];
 	char configPath[PLATFORM_MAX_PATH];
 	KeyValues config = new KeyValues("toth");
@@ -32,34 +33,39 @@ stock void ParseMapConfig(KeyValues kv) {
 
 		kv.GetSectionName(keyName, 64);
 
-		ConfigEntity configEntity[ConfigEntity];
+		ConfigEntry configEntry[ConfigEntry];
 
 		kv.GotoFirstSubKey(false);
-		ParseEntityConfig(kv, configEntity);
+		ParseEntityConfig(kv, configEntry);
 		kv.GoBack();
 
-		strcopy(configEntity[CWTargetname], 64, keyName);
+		strcopy(configEntry[CETargetname], 64, keyName);
 
-		gConfigEntitys.SetArray(keyName, configEntity[0], view_as<int>(ConfigEntity), true);
+		gConfigEntries.SetArray(keyName, configEntry[0], view_as<int>(ConfigEntry), true);
 	} while(kv.GotoNextKey(false));
 }
 
-stock void ParseEntityConfig(KeyValues kv, ConfigEntity configEntity[ConfigEntity]) {
+stock void ParseEntityConfig(KeyValues kv, ConfigEntry configEntry[ConfigEntry]) {
 	do {
 		char keyName[50];
 
 		kv.GetSectionName(keyName, 50);
 
-		if(StrEqual(keyName, "name", false)) {
-			kv.GetString(NULL_STRING, configEntity[CDEName], 64, "");
-
+		if(StrEqual(keyName, "scale", false)) {
+			configEntry[CEScale] = kv.GetFloat(NULL_STRING, 1.0);
 			continue;
 		}
 
-		// if(StrEqual(keyName, "defindex", false)) {
-		// 	configEntity[CWDefindex] = kv.GetNum(NULL_STRING, 0);
+		if(StrEqual(keyName, "position", false)) {
+			float position[3];
 
-		// 	continue;
-		// }
+			kv.GetVector(NULL_STRING, position, NULL_VECTOR);
+
+			configEntry[CEPosition][0] = position[0];
+			configEntry[CEPosition][1] = position[1];
+			configEntry[CEPosition][2] = position[2];
+
+			continue;
+		}
 	} while(kv.GotoNextKey(false));
 }

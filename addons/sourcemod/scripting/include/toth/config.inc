@@ -67,5 +67,17 @@ stock void ParseEntityConfig(KeyValues kv, ConfigEntry configEntry[ConfigEntry])
 
 			continue;
 		}
+
+		if(StrEqual(keyName, "rotation", false)) {
+			float rotation[3];
+
+			kv.GetVector(NULL_STRING, rotation, NULL_VECTOR);
+
+			configEntry[CERotation][0] = rotation[0];
+			configEntry[CERotation][1] = rotation[1];
+			configEntry[CERotation][2] = rotation[2];
+
+			continue;
+		}
 	} while(kv.GotoNextKey(false));
 }

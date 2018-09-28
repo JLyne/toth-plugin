@@ -1,4 +1,5 @@
 #include <sourcemod>
+#include <regex>
 #include <tf2_stocks>
 #include <halflife>
 #include <SteamWorks>
@@ -35,10 +36,16 @@ enum DonationDisplay {
 
 enum ConfigEntry {
 	String:CETargetname[64], //Entity targetname
+	bool:CERegex, //Whether the targetname is a regex
 	Float:CEScale, //Digit sprite scale
 	Float:CEPosition[3], //Position relative to entity center
 	Float:CERotation[3], //Rotation relative to entity angles
 	//TODO: Rotation? Alignment?
+}
+
+enum ConfigRegex {
+	Regex:CRRegex,
+	String:CRConfigEntry[64],
 }
 
 enum EntityType {
@@ -56,7 +63,9 @@ int gLastMilestone = 0;
 
 ArrayList gDuckModels;
 ArrayList gDonationDisplays;
+
 StringMap gConfigEntries;
+ArrayList gConfigRegexes;
 
 Handle gDonationTimer = INVALID_HANDLE;
 
@@ -66,6 +75,7 @@ public void OnPluginStart() {
 	gDuckModels = new ArrayList(PLATFORM_MAX_PATH);
 	gDonationDisplays = new ArrayList(view_as<int>(DonationDisplay));
 	gConfigEntries = new StringMap();
+	gConfigRegexes = new ArrayList(view_as<int>(ConfigRegex));
 
 	gDuckModels.PushString("models/blap/bonus_blap.mdl");
 	gDuckModels.PushString("models/blap/bonus_blap_2.mdl");
@@ -252,6 +262,31 @@ void FindMapEntities(any unused) {
 			donationDisplay[DDRotation][2] = configEntry[CERotation][2];
 		}
 
+		//Check for regex matches and use it's config entry if matching
+		for(int j = 0; j < gConfigRegexes.Length; j++) {
+			ConfigRegex configRegex[ConfigRegex];
+			gConfigRegexes.GetArray(j, configRegex[0], view_as<int>(ConfigRegex));
+
+			if(configRegex[CRRegex].Match(name) > 0) {
+				#if defined _DEBUG
+					PrintToServer("Entity %s matched config regex", name);
+				#endif
+
+				gConfigEntries.GetArray(configRegex[CRConfigEntry], configEntry[0], view_as<int>(ConfigEntry));
+
+				donationDisplay[DDScale] = configEntry[CEScale];
+				donationDisplay[DDType] = EntityType_Custom;
+				
+				donationDisplay[DDPosition][0] = configEntry[CEPosition][0];
+				donationDisplay[DDPosition][1] = configEntry[CEPosition][1];
+				donationDisplay[DDPosition][2] = configEntry[CEPosition][2];
+
+				donationDisplay[DDRotation][0] = configEntry[CERotation][0];
+				donationDisplay[DDRotation][1] = configEntry[CERotation][1];
+				donationDisplay[DDRotation][2] = configEntry[CERotation][2];
+			}
+		}
+
 		//Reskin and setup display for control points
 		if(StrEqual(class, "team_control_point", false)) {
 			donationDisplay[DDType] = EntityType_ControlPoint;
@@ -353,7 +388,6 @@ void PositionDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
 			offset[2] += 30.0;
 	}
 
-
 	Format(scale, sizeof(scale), "%00.2f", 0.25 * donationDisplay[DDScale]);
 
 	//Add position offset from config
@@ -404,6 +438,7 @@ void PositionDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
 	//22 30 34 40
 }
 
+//TODO: Fix rotated resupplies (turbine tilted)
 void PositionResupplyDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
 	float origin[3]; //Position of entity center
 	float angles[3]; //Entity rotation

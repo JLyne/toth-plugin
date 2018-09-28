@@ -41,6 +41,24 @@ stock void ParseMapConfig(KeyValues kv) {
 
 		strcopy(configEntry[CETargetname], 64, keyName);
 
+		//If entry is a regex then save as ConfigRegex
+		if(configEntry[CERegex]) {
+			RegexError errorType;
+			char error[64];
+			Regex regex = new Regex(keyName, 0, error, sizeof(error), errorType);
+
+			if(errorType != REGEX_ERROR_NONE) {
+				PrintToServer("Error in regex '%s': %s", keyName, error);
+				continue;
+			}
+
+			ConfigRegex configRegex[ConfigRegex];
+			configRegex[CRRegex] = regex;
+			strcopy(configRegex[CRConfigEntry], sizeof(configRegex[CRConfigEntry]), keyName);
+
+			gConfigRegexes.PushArray(configRegex[0]);
+		}
+
 		gConfigEntries.SetArray(keyName, configEntry[0], view_as<int>(ConfigEntry), true);
 	} while(kv.GotoNextKey(false));
 }
@@ -50,6 +68,11 @@ stock void ParseEntityConfig(KeyValues kv, ConfigEntry configEntry[ConfigEntry])
 		char keyName[50];
 
 		kv.GetSectionName(keyName, 50);
+
+		if(StrEqual(keyName, "regex", false)) {
+			configEntry[CERegex] = !!kv.GetNum(NULL_STRING, 1);
+			continue;
+		}
 
 		if(StrEqual(keyName, "scale", false)) {
 			configEntry[CEScale] = kv.GetFloat(NULL_STRING, 1.0);

@@ -9,7 +9,7 @@
 #pragma newdecls required
 
 #define PLUGIN_VERSION "1.1"
-#define HOLOGRAM_MODEL "models/blap/cappoint_hologram.mdl"
+#define HOLOGRAM_MODEL "models/toth/cappoint_hologram.mdl"
 #define CAMPAIGN_URL "https://tiltify.com/api/v3/campaigns/17129"
 #define _DEBUG 1
 
@@ -77,10 +77,10 @@ public void OnPluginStart() {
 	gConfigEntries = new StringMap();
 	gConfigRegexes = new ArrayList(view_as<int>(ConfigRegex));
 
-	gDuckModels.PushString("models/blap/bonus_blap.mdl");
-	gDuckModels.PushString("models/blap/bonus_blap_2.mdl");
-	gDuckModels.PushString("models/blap/bonus_blap_3.mdl");
-	gDuckModels.PushString("models/blap/bonus_blap_4.mdl");
+	gDuckModels.PushString("models/toth/bonus_tip.mdl");
+	gDuckModels.PushString("models/toth/bonus_tip_2.mdl");
+	gDuckModels.PushString("models/toth/bonus_tip_3.mdl");
+	gDuckModels.PushString("models/toth/bonus_tip_4.mdl");
 
 	HookEvent("teamplay_round_start", OnRoundStart);
 }
@@ -109,64 +109,50 @@ public void OnMapStart() {
 		AddFileToDownloadsTable(model);
 	}
 
-	PrecacheModel(HOLOGRAM_MODEL);
 	PrecacheModel("models/items/currencypack_large.mdl");
+	PrecacheModel(HOLOGRAM_MODEL);
 	AddFileToDownloadsTable(HOLOGRAM_MODEL);
 
-	PrecacheGeneric("materials/blap/numbers.vmt");
-	PrecacheGeneric("materials/blap/numbers.vtf");
-	PrecacheGeneric("materials/blap/numbers-comma.vmt");
-	PrecacheGeneric("materials/blap/numbers-comma.vtf");
+	PrecacheGeneric("materials/toth/numbers.vmt");
+	PrecacheGeneric("materials/toth/numbers.vtf");
+	PrecacheGeneric("materials/toth/numbers-comma.vmt");
+	PrecacheGeneric("materials/toth/numbers-comma.vtf");
 
-	AddFileToDownloadsTable("materials/blap/numbers.vmt");
-	AddFileToDownloadsTable("materials/blap/numbers.vtf");
-	AddFileToDownloadsTable("materials/blap/numbers-comma.vmt");
-	AddFileToDownloadsTable("materials/blap/numbers-comma.vtf");
+	AddFileToDownloadsTable("materials/toth/numbers.vmt");
+	AddFileToDownloadsTable("materials/toth/numbers.vtf");
+	AddFileToDownloadsTable("materials/toth/numbers-comma.vmt");
+	AddFileToDownloadsTable("materials/toth/numbers-comma.vtf");
 
-	AddFileToDownloadsTable("materials/models/blap/cappoint_logo_blue.vtf");
-	AddFileToDownloadsTable("materials/models/blap/cappoint_logo_red.vtf");
-
-	AddFileToDownloadsTable("materials/models/effects/blap_cappoint_logo_blue.vmt");
-	AddFileToDownloadsTable("materials/models/effects/blap_cappoint_logo_blue_dark.vmt");
-	AddFileToDownloadsTable("materials/models/effects/blap_cappoint_logo_red.vmt");
-	AddFileToDownloadsTable("materials/models/effects/blap_cappoint_logo_red_dark.vmt");
+	AddFileToDownloadsTable("materials/models/toth/cappoint_logo_blue.vtf");
+	AddFileToDownloadsTable("materials/models/toth/cappoint_logo_red.vtf");
+	AddFileToDownloadsTable("materials/models/toth/cappoint_logo_neutral.vtf");
+	AddFileToDownloadsTable("materials/models/toth/cappoint_logo_blue.vmt");
+	AddFileToDownloadsTable("materials/models/toth/cappoint_logo_blue_dark.vmt");
+	AddFileToDownloadsTable("materials/models/toth/cappoint_logo_red.vmt");
+	AddFileToDownloadsTable("materials/models/toth/cappoint_logo_red_dark.vmt");
+	AddFileToDownloadsTable("materials/models/toth/cappoint_logo_neutral.vmt");
+	AddFileToDownloadsTable("materials/models/toth/cappoint_logo_neutral_dark.vmt");
 	
-	AddFileToDownloadsTable("models/blap/blapature_bonus_duck.dx80.vtx");
-	AddFileToDownloadsTable("models/blap/bonus_blap_3.dx80.vtx");
-	AddFileToDownloadsTable("models/blap/bonus_blap.dx80.vtx");
-	AddFileToDownloadsTable("models/blap/blapature_bonus_duck.dx90.vtx");
-	AddFileToDownloadsTable("models/blap/bonus_blap_3.dx90.vtx");
-	AddFileToDownloadsTable("models/blap/bonus_blap.dx90.vtx");
-	AddFileToDownloadsTable("models/blap/blapature_bonus_duck.mdl");
-	AddFileToDownloadsTable("models/blap/bonus_blap_3.mdl");
-	AddFileToDownloadsTable("models/blap/bonus_blap.mdl");
-	AddFileToDownloadsTable("models/blap/blapature_bonus_duck.sw.vtx");
-	AddFileToDownloadsTable("models/blap/bonus_blap_3.sw.vtx");
-	AddFileToDownloadsTable("models/blap/bonus_blap.phy");
-	AddFileToDownloadsTable("models/blap/blapature_bonus_duck.vvd");
-	AddFileToDownloadsTable("models/blap/bonus_blap_3.vvd");
-	AddFileToDownloadsTable("models/blap/bonus_blap.sw.vtx");
-	AddFileToDownloadsTable("models/blap/bonus_blap_2.dx80.vtx");
-	AddFileToDownloadsTable("models/blap/bonus_blap_4.dx80.vtx");
-	AddFileToDownloadsTable("models/blap/bonus_blap.vvd");
-	AddFileToDownloadsTable("models/blap/bonus_blap_2.dx90.vtx");
-	AddFileToDownloadsTable("models/blap/bonus_blap_4.dx90.vtx");
-	AddFileToDownloadsTable("models/blap/cappoint_hologram.dx80.vtx");
-	AddFileToDownloadsTable("models/blap/bonus_blap_2.mdl");
-	AddFileToDownloadsTable("models/blap/bonus_blap_4.mdl");
-	AddFileToDownloadsTable("models/blap/cappoint_hologram.dx90.vtx");
-	AddFileToDownloadsTable("models/blap/bonus_blap_2.phy");
-	AddFileToDownloadsTable("models/blap/bonus_blap_4.phy");
-	AddFileToDownloadsTable("models/blap/cappoint_hologram.mdl");
-	AddFileToDownloadsTable("models/blap/bonus_blap_2.sw.vtx");
-	AddFileToDownloadsTable("models/blap/bonus_blap_4.sw.vtx");
-	AddFileToDownloadsTable("models/blap/cappoint_hologram.sw.vtx");
-	AddFileToDownloadsTable("models/blap/bonus_blap_2.vvd");
-	AddFileToDownloadsTable("models/blap/bonus_blap_4.vvd");
-	AddFileToDownloadsTable("models/blap/cappoint_hologram.vvd");
-
-	AddFileToDownloadsTable("materials/blap/numbers-comma.vtf");
-	AddFileToDownloadsTable("materials/blap/numbers-comma.vtf");
+	AddFileToDownloadsTable("models/toth/bonus_tip.dx80.vtx");
+	AddFileToDownloadsTable("models/toth/bonus_tip.dx90.vtx");
+	AddFileToDownloadsTable("models/toth/bonus_tip.sw.vtx");
+	AddFileToDownloadsTable("models/toth/bonus_tip.vvd");
+	AddFileToDownloadsTable("models/toth/bonus_tip_2.dx80.vtx");
+	AddFileToDownloadsTable("models/toth/bonus_tip_2.dx90.vtx");
+	AddFileToDownloadsTable("models/toth/bonus_tip_2.sw.vtx");
+	AddFileToDownloadsTable("models/toth/bonus_tip_2.vvd");
+	AddFileToDownloadsTable("models/toth/bonus_tip_3.dx80.vtx");
+	AddFileToDownloadsTable("models/toth/bonus_tip_3.dx90.vtx");
+	AddFileToDownloadsTable("models/toth/bonus_tip_3.sw.vtx");
+	AddFileToDownloadsTable("models/toth/bonus_tip_3.vvd");
+	AddFileToDownloadsTable("models/toth/bonus_tip_4.dx80.vtx");
+	AddFileToDownloadsTable("models/toth/bonus_tip_4.dx90.vtx");
+	AddFileToDownloadsTable("models/toth/bonus_tip_4.sw.vtx");
+	AddFileToDownloadsTable("models/toth/bonus_tip_4.vvd");
+	AddFileToDownloadsTable("models/toth/cappoint_hologram.dx80.vtx");
+	AddFileToDownloadsTable("models/toth/cappoint_hologram.dx90.vtx");
+	AddFileToDownloadsTable("models/toth/cappoint_hologram.sw.vtx");
+	AddFileToDownloadsTable("models/toth/cappoint_hologram.vvd");
 
 	for(int i = 1; i <= 29; i++) {
 		char sound[PLATFORM_MAX_PATH];
@@ -202,6 +188,7 @@ public void SetDuckModel(any entity) {
 		char model[PLATFORM_MAX_PATH];
 
 		gDuckModels.GetString(index, model, PLATFORM_MAX_PATH);
+		PrintToServer(model);
 
 		SetEntityModel(entity, model);
 		SetEntPropFloat(entity, Prop_Data, "m_flModelScale", 1.0);
@@ -350,8 +337,10 @@ void SetupDonationDisplay(int entity, DonationDisplay donationDisplay[DonationDi
 
 void PositionDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
 	float position[3]; //Entity origin
-	float angles[3] = { 0.0, 90.0, 0.0 }; //Entity rotation
-	float offset[3] = { 0.0, 0.0, 0.0 }; //Offset from entity origin to use for positioning sprite
+	float angles[3]; //Entity rotation
+
+	float offset[3]; //Offset from entity origin to use for positioning sprite
+	float rotationOffset[3]; 
 	float displayPosition[3]; //Final sprite position
 
 	float firstDigitOffset = 30.0 * donationDisplay[DDScale]; //Initial offset before first digit to roughly "center" the display around the desired position
@@ -365,21 +354,25 @@ void PositionDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
 	switch(donationDisplay[DDType]) {
 		case EntityType_Resupply :
 		{
-			PositionResupplyDonationDisplay(donationDisplay);
-			return;
+			rotationOffset[1] += 180.0;
+			rotationOffset[2] += 90.0;
+			offset[2] += 52.0;
+			offset[1] -= 34.0;
+			offset[0] += 14.0;
+			PrintToServer("%f %f %f", angles[0], angles[1], angles[2]);
 		}
 
 		//Position above control point hologram
 		case EntityType_ControlPoint :
 		{
-			angles[1] += 90.0;
+			rotationOffset[1] += 90.0;
 			offset[2] += 190.0;
 		}
 
 		//Position above control point hologram
 		case EntityType_PayloadCart :
 		{
-			angles[1] += 90.0;
+			rotationOffset[1] += 90.0;
 			offset[2] += 75.0;
 		}
 		
@@ -388,27 +381,21 @@ void PositionDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
 			offset[2] += 30.0;
 	}
 
-	Format(scale, sizeof(scale), "%00.2f", 0.25 * donationDisplay[DDScale]);
-
 	//Add position offset from config
 	offset[0] += donationDisplay[DDPosition][0];
 	offset[1] += donationDisplay[DDPosition][1];
 	offset[2] += donationDisplay[DDPosition][2];
 
 	//Add rotation offset from config
-	angles[0] += donationDisplay[DDRotation][0];
-	angles[1] += donationDisplay[DDRotation][1];
-	angles[2] += donationDisplay[DDRotation][2];
-
-
-	//Add first digit offset for centering
-	offset[1] += firstDigitOffset;
+	rotationOffset[0] += donationDisplay[DDRotation][0];
+	rotationOffset[1] += donationDisplay[DDRotation][1];
+	rotationOffset[2] += donationDisplay[DDRotation][2];
 
 	//Angle vectors
 	float fwd[3];
 	float right[3];
 	float up[3];
-
+	
 	GetAngleVectors(angles, fwd, right, up);
 
 	ScaleVector(fwd, offset[0]);
@@ -419,10 +406,13 @@ void PositionDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
 	AddVectors(displayPosition, right, displayPosition);
 	AddVectors(displayPosition, up, displayPosition);
 
-	//Swap direction to avoid placing digits backwards if offset is below 0
-	if(offset[1] < 0) {
-		NegateVector(right);
-	}
+	//Apply rotation offset
+	AddVectors(angles, rotationOffset, angles);
+	GetAngleVectors(angles, fwd, right, up);
+
+	//Add first digit offset for centering
+	ScaleVector(right, firstDigitOffset);
+	AddVectors(displayPosition, right, displayPosition);
 
 	//Position each digit
 	for(int i = 0; i < 4; i++) {		
@@ -436,68 +426,6 @@ void PositionDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
 		TeleportEntity(donationDisplay[DDDigits][i], displayPosition, angles, NULL_VECTOR);
 	}
 	//22 30 34 40
-}
-
-//TODO: Fix rotated resupplies (turbine tilted)
-void PositionResupplyDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
-	float origin[3]; //Position of entity center
-	float angles[3]; //Entity rotation
-
-	float mins[3]; //Entity bottom corner
-	float maxs[3]; //Entity top corner
-
-	float direction[3]; //Vector pointing towards corner
-	
-	float spritePosition[3]; //Calculated sprite position
-
-	char scale[10];
-
-	// int color[4] = {0, 255, 0, 255};
-
-	//Get Stuff
-	GetEntPropVector(donationDisplay[DDParent], Prop_Send, "m_vecOrigin", origin);
-	GetEntPropVector(donationDisplay[DDParent], Prop_Send, "m_angRotation", angles);
-	GetEntPropVector(donationDisplay[DDParent], Prop_Send, "m_vecMins", mins);
-	GetEntPropVector(donationDisplay[DDParent], Prop_Send, "m_vecMaxs", maxs);
-
-	//Point towards corner
-	angles[1] += 65.0;
-
-	//Get corner position by calculating hypotenuse length of the mins triangle
-	GetAngleVectors(angles, direction, NULL_VECTOR, NULL_VECTOR);	
-	ScaleVector(direction, SquareRoot(Pow(-16.0, 2.0) + Pow(-32.0, 2.0)));
-	AddVectors(origin, direction, spritePosition);
-
-	//Revert angle changes for later use
-	angles[1] -= 65.0;
-
-	//Add half the the entity height to get half way point
-	spritePosition[2] += ((FloatAbs(mins[2]) + FloatAbs(maxs[2])) / 2);
-
-	angles[2] += 90.0;
-	angles[1] -= 180.0;
-
-	Format(scale, sizeof(scale), "%00.2f", 0.25 * donationDisplay[DDScale]);
-
-	spritePosition[2] -= (38.0 * donationDisplay[DDScale]);
-
-	DispatchKeyValue(donationDisplay[DDDigits][0], "scale", scale);
-	TeleportEntity(donationDisplay[DDDigits][0], spritePosition, angles, NULL_VECTOR);
-
-	spritePosition[2] += (33.0 * donationDisplay[DDScale]);
-
-	DispatchKeyValue(donationDisplay[DDDigits][1], "scale", scale);
-	TeleportEntity(donationDisplay[DDDigits][1], spritePosition, angles, NULL_VECTOR);
-
-	spritePosition[2] += (33.0 * donationDisplay[DDScale]);
-
-	DispatchKeyValue(donationDisplay[DDDigits][2], "scale", scale);
-	TeleportEntity(donationDisplay[DDDigits][2], spritePosition, angles, NULL_VECTOR);
-
-	spritePosition[2] += (33.0 * donationDisplay[DDScale]);
-
-	DispatchKeyValue(donationDisplay[DDDigits][3], "scale", scale);
-	TeleportEntity(donationDisplay[DDDigits][3], spritePosition, angles, NULL_VECTOR);
 }
 
 void PrepareControlPoint(int entity) {
@@ -536,9 +464,9 @@ int CreateDonationDigit(bool comma, bool startBlank = false) {
 	int entity = CreateEntityByName("env_sprite_oriented");
 
 	if(comma) {
-		DispatchKeyValue(entity, "model", "blap/numbers-comma.vmt");
+		DispatchKeyValue(entity, "model", "toth/numbers-comma.vmt");
 	} else {
-		DispatchKeyValue(entity, "model", "blap/numbers.vmt");
+		DispatchKeyValue(entity, "model", "toth/numbers.vmt");
 	}
 
 	DispatchKeyValue(entity, "framerate", "0");

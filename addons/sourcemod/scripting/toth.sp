@@ -67,11 +67,21 @@ ArrayList gDonationDisplays;
 StringMap gConfigEntries;
 ArrayList gConfigRegexes;
 
+ConVar gTFDucksCvar;
+ConVar gDucksCvar;
+ConVar gCPsCvar;
+ConVar gDonationsCvar;
+
 Handle gDonationTimer = INVALID_HANDLE;
 
 #include <toth/config>
 
 public void OnPluginStart() {
+	gTFDucksCvar = FindConVar("tf_player_drop_bonus_ducks");
+	gDucksCvar = CreateConVar("toth_ducks_enabled", "1", "Whether toth reskinned ducks are enabled", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	gCPsCvar = CreateConVar("toth_cps_enabled", "1", "Whether toth reskinned control points are enabled", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	gDonationsCvar = CreateConVar("toth_donations_enabled", "1", "Whether toth donation total displays are enabled", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+
 	gDuckModels = new ArrayList(PLATFORM_MAX_PATH);
 	gDonationDisplays = new ArrayList(view_as<int>(DonationDisplay));
 	gConfigEntries = new StringMap();
@@ -82,24 +92,19 @@ public void OnPluginStart() {
 	gDuckModels.PushString("models/toth/bonus_tip_3.mdl");
 	gDuckModels.PushString("models/toth/bonus_tip_4.mdl");
 
+	gDonationsCvar.AddChangeHook(OnDonationsCvarChanged);
+
 	HookEvent("teamplay_round_start", OnRoundStart);
 }
 
 public void OnPluginEnd() {
-	for(int i = 0; i < gDonationDisplays.Length; i++) {
-		DonationDisplay entity[DonationDisplay];
-
-		gDonationDisplays.GetArray(i, entity[0], view_as<int>(DonationDisplay));
-
-		for(int j = 0; j < 4; j++) {
-			AcceptEntityInput(entity[DDDigits][j], "Kill");
-		}
-	}
+	DestroyDonationDisplays();
 }
 
 public void OnMapStart() {
+	AutoExecConfig(true);
+
 	gDonationDisplays.Clear();
-	gDonationTotal = 0;
 
 	for(int i = 0; i < gDuckModels.Length; i++) {
 		char model[PLATFORM_MAX_PATH];
@@ -162,8 +167,16 @@ public void OnMapStart() {
 
 	LoadMapConfig();
 	RequestFrame(FindMapEntities);
+}
 
-	ScheduleDonationRequest();
+public void OnConfigsExecuted() {
+	if(gTFDucksCvar != null && gDucksCvar.BoolValue) {
+		gTFDucksCvar.SetFloat(1.0);
+	}
+
+	if(gDonationsCvar.BoolValue) {
+		ScheduleDonationRequest(true);
+	} 
 }
 
 public Action OnRoundStart(Event event, const char[] name, bool dontBroadcast) {
@@ -175,8 +188,22 @@ public Action OnRoundStart(Event event, const char[] name, bool dontBroadcast) {
 }
 	
 public void OnEntityCreated(int entity, const char[] classname) {
-	if(!strcmp(classname, "tf_bonus_duck_pickup", false)) {
+	if(!strcmp(classname, "tf_bonus_duck_pickup", false) && gDucksCvar.BoolValue) {
 		RequestFrame(SetDuckModel, EntIndexToEntRef(entity));
+	}
+}
+
+public void OnDonationsCvarChanged(ConVar convar, const char[] oldValue, const char[] newValue) {
+	if(!convar.BoolValue) {
+		DestroyDonationDisplays();
+
+		if(gDonationTimer != INVALID_HANDLE) {
+			KillTimer(gDonationTimer);
+			gDonationTimer = INVALID_HANDLE;
+		}
+	} else {
+		FindMapEntities(0);
+		ScheduleDonationRequest(true);
 	}
 }
 
@@ -188,7 +215,6 @@ public void SetDuckModel(any entity) {
 		char model[PLATFORM_MAX_PATH];
 
 		gDuckModels.GetString(index, model, PLATFORM_MAX_PATH);
-		PrintToServer(model);
 
 		SetEntityModel(entity, model);
 		SetEntPropFloat(entity, Prop_Data, "m_flModelScale", 1.0);
@@ -277,7 +303,10 @@ void FindMapEntities(any unused) {
 		//Reskin and setup display for control points
 		if(StrEqual(class, "team_control_point", false)) {
 			donationDisplay[DDType] = EntityType_ControlPoint;
-			PrepareControlPoint(i);
+
+			if(gCPsCvar.BoolValue) {
+				PrepareControlPoint(i);
+			}
 		}
 
 		//Reskin and setup display for intel
@@ -297,7 +326,7 @@ void FindMapEntities(any unused) {
 		}
 
 		//If entity should have a donation display create it
-		if(donationDisplay[DDType] != EntityType_None) {
+		if(donationDisplay[DDType] != EntityType_None && gDonationsCvar.BoolValue) {
 			#if defined _DEBUG
 				PrintToServer("Entity %s has donation display of type %d", name, donationDisplay[DDType]);
 			#endif
@@ -305,6 +334,8 @@ void FindMapEntities(any unused) {
 			SetupDonationDisplay(i, donationDisplay);
 		}
 	}
+
+	UpdateDonationDisplays();
 }
 
 void SetupDonationDisplay(int entity, DonationDisplay donationDisplay[DonationDisplay]) {
@@ -321,18 +352,10 @@ void SetupDonationDisplay(int entity, DonationDisplay donationDisplay[DonationDi
 	donationDisplay[DDDigits][2] = CreateDonationDigit(false);
 	donationDisplay[DDDigits][3] = CreateDonationDigit(false, true);
 
-	PositionDonationDisplay(donationDisplay);
-
-	for(int i = 0; i < 4; i++) {
-		SetVariantString("!activator");
-		AcceptEntityInput(donationDisplay[DDDigits][i], "SetParent", donationDisplay[DDParent], donationDisplay[DDParent]);
-	}
-
 	int index = gDonationDisplays.PushArray(donationDisplay[0]);
 
-	if(donationDisplay[DDType] == EntityType_ControlPoint) {
-		RequestFrame(ParentControlPointDonationEntities, index);
-	}
+	PositionDonationDisplay(donationDisplay);
+	ParentDonationDisplay(donationDisplay, index);
 }
 
 void PositionDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
@@ -343,7 +366,7 @@ void PositionDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
 	float rotationOffset[3]; 
 	float displayPosition[3]; //Final sprite position
 
-	float firstDigitOffset = 30.0 * donationDisplay[DDScale]; //Initial offset before first digit to roughly "center" the display around the desired position
+	float firstDigitOffset = GetFirstDigitOffset(donationDisplay[DDType] == EntityType_Resupply) * donationDisplay[DDScale]; //Initial offset before first digit to roughly "center" the display around the desired position
 	float digitSpacing = 33.0 * donationDisplay[DDScale]; //Spacing between digits
 
 	char scale[10];
@@ -359,7 +382,6 @@ void PositionDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
 			offset[2] += 52.0;
 			offset[1] -= 34.0;
 			offset[0] += 14.0;
-			PrintToServer("%f %f %f", angles[0], angles[1], angles[2]);
 		}
 
 		//Position above control point hologram
@@ -373,13 +395,16 @@ void PositionDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
 		case EntityType_PayloadCart :
 		{
 			rotationOffset[1] += 90.0;
-			offset[2] += 75.0;
+			offset[2] += 50.0;
+			offset[0] += 10.0;
 		}
 		
 		//Position above control point hologram
 		case EntityType_Intel :
 			offset[2] += 30.0;
 	}
+
+	Format(scale, sizeof(scale), "%00.2f", 0.25 * donationDisplay[DDScale]);
 
 	//Add position offset from config
 	offset[0] += donationDisplay[DDPosition][0];
@@ -424,8 +449,76 @@ void PositionDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
 
 		DispatchKeyValue(donationDisplay[DDDigits][i], "scale", scale);
 		TeleportEntity(donationDisplay[DDDigits][i], displayPosition, angles, NULL_VECTOR);
+		TeleportEntity(donationDisplay[DDDigits][i], displayPosition, angles, NULL_VECTOR);
 	}
-	//22 30 34 40
+}
+
+void ParentDonationDisplay(DonationDisplay donationDisplay[DonationDisplay], int index) {
+	for(int i = 0; i < 4; i++) {
+		SetVariantString("!activator");
+		AcceptEntityInput(donationDisplay[DDDigits][i], "SetParent", donationDisplay[DDParent], donationDisplay[DDParent]);
+	}
+
+	if(donationDisplay[DDType] == EntityType_ControlPoint) {
+		RequestFrame(ParentControlPointDonationDisplay, index);
+	}
+}
+
+void ParentControlPointDonationDisplay(any index) {
+	DonationDisplay donationDisplay[DonationDisplay];
+
+	gDonationDisplays.GetArray(index, donationDisplay[0], view_as<int>(DonationDisplay));
+
+	for(int i = 0; i < 4; i++) {
+		SetVariantString("donations");
+		AcceptEntityInput(donationDisplay[DDDigits][i], "SetParentAttachmentMaintainOffset");
+	}
+}
+
+void UnparentDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
+	for(int i = 0; i < 4; i++) {
+		AcceptEntityInput(donationDisplay[DDDigits][i], "ClearParent", donationDisplay[DDParent], donationDisplay[DDParent]);
+	}
+}
+
+//Get first digit offset to "center" donation display, based on number of used digits
+float GetFirstDigitOffset(bool resupply = false) {
+	if(resupply) {
+		return 30.0;
+	}
+
+	switch(gDigitsRequired) {
+		case 8:
+			return 50.0;
+
+		case 7:
+			return 40.0;
+
+		case 6:
+	 		return 30.0;
+
+ 		case 5:
+ 			return 20.0;
+
+		case 4:
+			return 10.0;
+	}
+
+	return 30.0;
+}
+
+void DestroyDonationDisplays() {
+	for(int i = 0; i < gDonationDisplays.Length; i++) {
+		DonationDisplay entity[DonationDisplay];
+
+		gDonationDisplays.GetArray(i, entity[0], view_as<int>(DonationDisplay));
+
+		for(int j = 0; j < 4; j++) {
+			AcceptEntityInput(entity[DDDigits][j], "Kill");
+		}
+	}
+
+	gDonationDisplays.Clear();
 }
 
 void PrepareControlPoint(int entity) {
@@ -445,19 +538,8 @@ void PrepareFlag(int entity) {
 	float origin[3];
 
 	GetEntPropVector(entity, Prop_Send, "m_vecOrigin", origin);
-	origin[2] -= 10.0;
+	origin[2] -= 10.0; //Move flag down to account for higher up model
 	TeleportEntity(entity, origin, NULL_VECTOR, NULL_VECTOR);
-}
-
-void ParentControlPointDonationEntities(any index) {
-	DonationDisplay donationDisplay[DonationDisplay];
-
-	gDonationDisplays.GetArray(index, donationDisplay[0], view_as<int>(DonationDisplay));
-
-	for(int i = 0; i < 4; i++) {
-		SetVariantString("donations");
-		AcceptEntityInput(donationDisplay[DDDigits][i], "SetParentAttachmentMaintainOffset");
-	}
 }
 
 int CreateDonationDigit(bool comma, bool startBlank = false) {
@@ -500,16 +582,21 @@ int CreateDonationDigit(bool comma, bool startBlank = false) {
 	return EntIndexToEntRef(entity);
 }
 
-void ScheduleDonationRequest() {
+void ScheduleDonationRequest(bool immediate = false) {
 	if(gDonationTimer != INVALID_HANDLE) {
 		KillTimer(gDonationTimer);
+		gDonationTimer = INVALID_HANDLE;
+	}
+
+	if(!gDonationsCvar.BoolValue) {
+		return;
 	}
 
 	#if defined _DEBUG
 	PrintToServer("Scheduling donation request");
 	#endif
 
-	gDonationTimer = CreateTimer(5.0, MakeDonationRequest);
+	gDonationTimer = CreateTimer(immediate ? 0.1 : 5.0, MakeDonationRequest);
 }
 
 public Action MakeDonationRequest(Handle timer, any data) {
@@ -593,28 +680,34 @@ public int UpdateDonationDisplays() {
 	float digits[4] = { 110.0, 110.0, 110.0, 110.0 };
 	int divisor = 1;
 	int digitsRequired = 0;
+
 	bool milestone = false;
+	bool reposition = false;
 
-	//Divide total into groups of 2 digits and work out which sprite frame to display for each
-	for(int i = 0; i < 4; i++) {
-		float amount = float((gDonationTotal / divisor) % 100);
-		digitsRequired++;
+	if(gDonationTotal) {
+		//Divide total into groups of 2 digits and work out which sprite frame to display for each
+		for(int i = 0; i < 4; i++) {
+			float amount = float((gDonationTotal / divisor) % 100);
 
-		if(!amount && gDonationTotal < divisor) { //Total is below the range of this digit, display $ sign and skip the rest
-			digits[i] = 111.0; //111th frame is empty
-			break;
-		} else if((amount && amount < 10.0) && (gDonationTotal < (divisor * 100))) { //Total is within range but only uses one of the 2 numbers, display with $ sign
-			digits[i] = amount + 100.0; //Frames 100 - 109 are single numbers with dollar signs
-			break;
-		} else { //Total uses both numbers within this digit, display normally
-			digits[i] = amount;
+			if(!amount && gDonationTotal < divisor) { //Total is below the range of this digit, display $ sign and skip the rest
+				digitsRequired += 1;
+				digits[i] = 111.0; //111th frame is empty
+				break;
+			} else if((amount && amount < 10.0) && (gDonationTotal < (divisor * 100))) { //Total is within range but only uses one of the 2 numbers, display with $ sign
+				digitsRequired += 2;
+				digits[i] = amount + 100.0; //Frames 100 - 109 are single numbers with dollar signs
+				break;
+			} else { //Total uses both numbers within this digit, display normally
+				digitsRequired += 2;
+				digits[i] = amount;
+			}
+
+			divisor *= 100;
 		}
-
-		divisor *= 100;
-	}
-
-	if(digitsRequired != gDigitsRequired) {
-
+	} else {
+		digits[0] = 113.0;
+		digits[1] = 113.0;
+		digits[2] = 113.0;
 	}
 
 	if((gDonationTotal - (gDonationTotal % 1000)) > gLastMilestone) {
@@ -622,10 +715,23 @@ public int UpdateDonationDisplays() {
 		milestone = true;
 	}
 
+	//Number of required digits for display has changed
+	if(digitsRequired != gDigitsRequired) {
+		gDigitsRequired = digitsRequired;
+		reposition = true;
+	}
+
 	for(int i = 0; i < gDonationDisplays.Length; i++) {
 		DonationDisplay entity[DonationDisplay];
 
 		gDonationDisplays.GetArray(i, entity[0], view_as<int>(DonationDisplay));
+
+		//If display needs repositioning, unparent then reparent to avoid weirdness
+		if(reposition && entity[DDType] != EntityType_Resupply) {
+			UnparentDonationDisplay(entity);
+			PositionDonationDisplay(entity);
+			ParentDonationDisplay(entity, i);
+		}
 
 		for(int j = 0; j < 4; j++) {
 			SetEntPropFloat(entity[DDDigits][j], Prop_Send, "m_flFrame", digits[j]);

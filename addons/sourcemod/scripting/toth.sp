@@ -11,7 +11,7 @@
 #define PLUGIN_VERSION "1.1"
 #define HOLOGRAM_MODEL "models/toth/cappoint_hologram.mdl"
 #define CAMPAIGN_URL "https://tipofthehats.org/stats"
-#define _DEBUG 1
+// #define _DEBUG 1
 
 public Plugin myinfo = 
 {
@@ -37,10 +37,10 @@ enum DonationDisplay {
 enum ConfigEntry {
 	String:CETargetname[64], //Entity targetname
 	bool:CERegex, //Whether the targetname is a regex
+	bool:CEHide,
 	Float:CEScale, //Digit sprite scale
 	Float:CEPosition[3], //Position relative to entity center
 	Float:CERotation[3], //Rotation relative to entity angles
-	//TODO: Rotation? Alignment?
 }
 
 enum ConfigRegex {
@@ -81,6 +81,9 @@ public void OnPluginStart() {
 	gDucksCvar = CreateConVar("toth_ducks_enabled", "1", "Whether toth reskinned ducks are enabled", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	gCPsCvar = CreateConVar("toth_cps_enabled", "1", "Whether toth reskinned control points are enabled", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	gDonationsCvar = CreateConVar("toth_donations_enabled", "1", "Whether toth donation total displays are enabled", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+
+	RegAdminCmd("sm_reloadtoth", Command_ReloadToth, ADMFLAG_GENERIC);
+	RegAdminCmd("sm_setdonationtotal", Command_SetDonationTotal, ADMFLAG_GENERIC);
 
 	gDuckModels = new ArrayList(PLATFORM_MAX_PATH);
 	gDonationDisplays = new ArrayList(view_as<int>(DonationDisplay));
@@ -207,6 +210,29 @@ public void OnDonationsCvarChanged(ConVar convar, const char[] oldValue, const c
 	}
 }
 
+public Action Command_ReloadToth(int client, int args) {
+	DestroyDonationDisplays();
+	LoadMapConfig();
+	RequestFrame(FindMapEntities);
+	ReplyToCommand(client, "[SM] Config reloaded");
+
+	return Plugin_Handled;
+}
+
+public Action Command_SetDonationTotal(int client, int args) {
+	char totalArg[16];
+	int total;
+
+	GetCmdArg(1, totalArg, sizeof(totalArg));
+	total = StringToInt(totalArg);
+
+	gDonationTotal = total;
+	UpdateDonationDisplays();
+	ReplyToCommand(client, "[SM] Total updated");
+
+	return Plugin_Handled;
+}
+
 public void SetDuckModel(any entity) {
 	entity = EntRefToEntIndex(entity);
 
@@ -257,49 +283,6 @@ void FindMapEntities(any unused) {
 
 		donationDisplay[DDParent] = i;
 
-		//Check if entity has a config entry and use if so
-		if(gConfigEntries.GetArray(name, configEntry[0], view_as<int>(ConfigEntry))) {
-			#if defined _DEBUG
-				PrintToServer("Entity %s has config entry", name);
-			#endif
-
-			donationDisplay[DDScale] = configEntry[CEScale];
-			donationDisplay[DDType] = EntityType_Custom;
-			
-			donationDisplay[DDPosition][0] = configEntry[CEPosition][0];
-			donationDisplay[DDPosition][1] = configEntry[CEPosition][1];
-			donationDisplay[DDPosition][2] = configEntry[CEPosition][2];
-
-			donationDisplay[DDRotation][0] = configEntry[CERotation][0];
-			donationDisplay[DDRotation][1] = configEntry[CERotation][1];
-			donationDisplay[DDRotation][2] = configEntry[CERotation][2];
-		}
-
-		//Check for regex matches and use it's config entry if matching
-		for(int j = 0; j < gConfigRegexes.Length; j++) {
-			ConfigRegex configRegex[ConfigRegex];
-			gConfigRegexes.GetArray(j, configRegex[0], view_as<int>(ConfigRegex));
-
-			if(configRegex[CRRegex].Match(name) > 0) {
-				#if defined _DEBUG
-					PrintToServer("Entity %s matched config regex", name);
-				#endif
-
-				gConfigEntries.GetArray(configRegex[CRConfigEntry], configEntry[0], view_as<int>(ConfigEntry));
-
-				donationDisplay[DDScale] = configEntry[CEScale];
-				donationDisplay[DDType] = EntityType_Custom;
-				
-				donationDisplay[DDPosition][0] = configEntry[CEPosition][0];
-				donationDisplay[DDPosition][1] = configEntry[CEPosition][1];
-				donationDisplay[DDPosition][2] = configEntry[CEPosition][2];
-
-				donationDisplay[DDRotation][0] = configEntry[CERotation][0];
-				donationDisplay[DDRotation][1] = configEntry[CERotation][1];
-				donationDisplay[DDRotation][2] = configEntry[CERotation][2];
-			}
-		}
-
 		//Reskin and setup display for control points
 		if(StrEqual(class, "team_control_point", false)) {
 			donationDisplay[DDType] = EntityType_ControlPoint;
@@ -323,6 +306,59 @@ void FindMapEntities(any unused) {
 		//Resupply cabinets
 		if(cabinets.FindValue(i) > -1) {
 			donationDisplay[DDType] = EntityType_Resupply;			
+		}
+
+				//Check if entity has a config entry and use if so
+		if(gConfigEntries.GetArray(name, configEntry[0], view_as<int>(ConfigEntry))) {
+			#if defined _DEBUG
+				PrintToServer("Entity %s has config entry", name);
+			#endif
+
+			if(configEntry[CEHide]) {
+				PrintToServer("Donation display for %s hidden", name);
+				continue;
+			}
+
+			donationDisplay[DDScale] = configEntry[CEScale];
+			
+			donationDisplay[DDPosition][0] = configEntry[CEPosition][0];
+			donationDisplay[DDPosition][1] = configEntry[CEPosition][1];
+			donationDisplay[DDPosition][2] = configEntry[CEPosition][2];
+
+			donationDisplay[DDRotation][0] = configEntry[CERotation][0];
+			donationDisplay[DDRotation][1] = configEntry[CERotation][1];
+			donationDisplay[DDRotation][2] = configEntry[CERotation][2];
+
+			if(donationDisplay[DDType] == EntityType_None) {
+				donationDisplay[DDType] = EntityType_Custom;
+			}
+		}
+
+		//Check for regex matches and use it's config entry if matching
+		if(strlen(name)) {
+			for(int j = 0; j < gConfigRegexes.Length; j++) {
+				ConfigRegex configRegex[ConfigRegex];
+				gConfigRegexes.GetArray(j, configRegex[0], view_as<int>(ConfigRegex));
+
+				if(configRegex[CRRegex].Match(name) > 0) {
+					#if defined _DEBUG
+						PrintToServer("Entity %s matched config regex", name);
+					#endif
+
+					gConfigEntries.GetArray(configRegex[CRConfigEntry], configEntry[0], view_as<int>(ConfigEntry));
+
+					donationDisplay[DDScale] = configEntry[CEScale];
+					donationDisplay[DDType] = EntityType_Custom;
+					
+					donationDisplay[DDPosition][0] = configEntry[CEPosition][0];
+					donationDisplay[DDPosition][1] = configEntry[CEPosition][1];
+					donationDisplay[DDPosition][2] = configEntry[CEPosition][2];
+
+					donationDisplay[DDRotation][0] = configEntry[CERotation][0];
+					donationDisplay[DDRotation][1] = configEntry[CERotation][1];
+					donationDisplay[DDRotation][2] = configEntry[CERotation][2];
+				}
+			}
 		}
 
 		//If entity should have a donation display create it
@@ -367,14 +403,12 @@ void PositionDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
 	float displayPosition[3]; //Final sprite position
 
 	float firstDigitOffset = GetFirstDigitOffset(donationDisplay[DDType] == EntityType_Resupply) * donationDisplay[DDScale]; //Initial offset before first digit to roughly "center" the display around the desired position
-	float digitSpacing = 33.0 * donationDisplay[DDScale]; //Spacing between digits
+	float digitSpacing = 32.0 * donationDisplay[DDScale]; //Spacing between digits
 
 	char scale[10];
 
 	GetEntPropVector(donationDisplay[DDParent], Prop_Data, "m_vecAbsOrigin", position);
 	GetEntPropVector(donationDisplay[DDParent], Prop_Send, "m_angRotation", angles);
-
-	PrintToServer("%f %f %f", position[0], position[1], position[2]);
 
 	switch(donationDisplay[DDType]) {
 		case EntityType_Resupply :
@@ -451,7 +485,6 @@ void PositionDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
 
 		DispatchKeyValue(donationDisplay[DDDigits][i], "scale", scale);
 		TeleportEntity(donationDisplay[DDDigits][i], displayPosition, angles, NULL_VECTOR);
-		TeleportEntity(donationDisplay[DDDigits][i], displayPosition, angles, NULL_VECTOR);
 	}
 }
 
@@ -486,27 +519,10 @@ void UnparentDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
 //Get first digit offset to "center" donation display, based on number of used digits
 float GetFirstDigitOffset(bool resupply = false) {
 	if(resupply) {
-		return 30.0;
+		return 32.0;
 	}
 
-	switch(gDigitsRequired) {
-		case 8:
-			return 50.0;
-
-		case 7:
-			return 40.0;
-
-		case 6:
-	 		return 30.0;
-
- 		case 5:
- 			return 20.0;
-
-		case 4:
-			return 10.0;
-	}
-
-	return 30.0;
+	return (gDigitsRequired - 2) * 8.0;
 }
 
 void DestroyDonationDisplays() {
@@ -557,6 +573,7 @@ int CreateDonationDigit(bool comma, bool startBlank = false) {
 	DispatchKeyValue(entity, "spawnflags", "1");
 	DispatchKeyValue(entity, "scale", "0.25");
 	
+	// SetEntityRenderMode(entity, RENDER_NORMAL);
 	SetEntityRenderMode(entity, RENDER_TRANSALPHAADD);
 
 	DispatchSpawn(entity);

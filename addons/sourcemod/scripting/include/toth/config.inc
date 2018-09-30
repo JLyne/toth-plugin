@@ -42,7 +42,7 @@ stock void ParseMapConfig(KeyValues kv) {
 		strcopy(configEntry[CETargetname], 64, keyName);
 
 		//If entry is a regex then save as ConfigRegex
-		if(configEntry[CERegex]) {
+		if(configEntry[CERegex] && !configEntry[CEHide]) {
 			RegexError errorType;
 			char error[64];
 			Regex regex = new Regex(keyName, 0, error, sizeof(error), errorType);
@@ -68,6 +68,11 @@ stock void ParseEntityConfig(KeyValues kv, ConfigEntry configEntry[ConfigEntry])
 		char keyName[50];
 
 		kv.GetSectionName(keyName, 50);
+
+		if(StrEqual(keyName, "hide", false)) {
+			configEntry[CEHide] = !!kv.GetNum(NULL_STRING, 1);
+			continue;
+		}
 
 		if(StrEqual(keyName, "regex", false)) {
 			configEntry[CERegex] = !!kv.GetNum(NULL_STRING, 1);

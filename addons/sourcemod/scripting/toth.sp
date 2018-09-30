@@ -371,8 +371,10 @@ void PositionDonationDisplay(DonationDisplay donationDisplay[DonationDisplay]) {
 
 	char scale[10];
 
-	GetEntPropVector(donationDisplay[DDParent], Prop_Send, "m_vecOrigin", position);
+	GetEntPropVector(donationDisplay[DDParent], Prop_Data, "m_vecAbsOrigin", position);
 	GetEntPropVector(donationDisplay[DDParent], Prop_Send, "m_angRotation", angles);
+
+	PrintToServer("%f %f %f", position[0], position[1], position[2]);
 
 	switch(donationDisplay[DDType]) {
 		case EntityType_Resupply :

@@ -10,7 +10,7 @@
 
 #define PLUGIN_VERSION "1.1"
 #define HOLOGRAM_MODEL "models/toth/cappoint_hologram.mdl"
-#define CAMPAIGN_URL "https://tiltify.com/api/v3/campaigns/17129"
+#define CAMPAIGN_URL "https://tipofthehats.org/stats"
 #define _DEBUG 1
 
 public Plugin myinfo = 
@@ -647,6 +647,7 @@ public int OnTotalRequestCompleted(Handle request, bool failure, bool successful
 
 public int ParseTotalJsonResponse(const char[] json) {
 	Handle parsed = json_load(json);
+	char total[16];
 
 	if(parsed == INVALID_HANDLE) {
 		LogError("Invalid json (failed to parse)");
@@ -654,26 +655,18 @@ public int ParseTotalJsonResponse(const char[] json) {
 		return -1;
 	}
 
-	Handle data = json_object_get(parsed, "data");
 
-	if(data == INVALID_HANDLE) {
-		LogError("Invalid json (data object missing)");
-
-		return -1;
-	}
-
-	int total = RoundToFloor(json_object_get_float(data, "amountRaised"));
-
-	if(!total) {
+	if(json_object_get_string(parsed, "total", total, sizeof(total)) == -1) {
 		LogError("Invalid json (invalid total)");
 
 		return -1;
 	}
 
-	CloseHandle(parsed);
-	CloseHandle(data);
+	ReplaceString(total, sizeof(total), "$", "");
+	ReplaceString(total, sizeof(total), ",", "");
 
-	return total;
+	CloseHandle(parsed);
+	return StringToInt(total);
 }
 
 public int UpdateDonationDisplays() {

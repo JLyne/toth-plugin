@@ -7,7 +7,7 @@ stock bool LoadMapConfig() {
 
 	GetCurrentMap(map, sizeof(map));
 
-	BuildPath(Path_SM, configPath, PLATFORM_MAX_PATH, "configs/toth.cfg");
+	BuildPath(Path_SM, configPath, sizeof(configPath), "configs/toth.cfg");
 
 	opened = config.ImportFromFile(configPath);
 
@@ -31,7 +31,7 @@ stock void ParseMapConfig(KeyValues kv) {
 	do {
 		char keyName[64];
 
-		kv.GetSectionName(keyName, 64);
+		kv.GetSectionName(keyName, sizeof(keyName));
 
 		ConfigEntry configEntry[ConfigEntry];
 
@@ -39,7 +39,7 @@ stock void ParseMapConfig(KeyValues kv) {
 		ParseEntityConfig(kv, configEntry);
 		kv.GoBack();
 
-		strcopy(configEntry[CETargetname], 64, keyName);
+		strcopy(configEntry[CETargetname], sizeof(configEntry[CETargetname]), keyName);
 
 		//If entry is a regex then save as ConfigRegex
 		if(configEntry[CERegex]) {
@@ -67,7 +67,7 @@ stock void ParseEntityConfig(KeyValues kv, ConfigEntry configEntry[ConfigEntry])
 	do {
 		char keyName[50];
 
-		kv.GetSectionName(keyName, 50);
+		kv.GetSectionName(keyName, sizeof(keyName));
 
 		if(StrEqual(keyName, "hide", false)) {
 			configEntry[CEHide] = !!kv.GetNum(NULL_STRING, 1);

@@ -23,7 +23,7 @@ public Plugin myinfo =
 	author = "Jim",
 	description = "Server tothification",
 	version = PLUGIN_VERSION,
-	url = "http://www.sourcemod.net/"
+	url = "http://steamcommunity.com/id/_NiGHTS/"
 };
 
 //Represents an active donation total linked to an entity on the map
@@ -125,7 +125,7 @@ public void OnMapStart() {
 	for(int i = 0; i < gDuckModels.Length; i++) {
 		char model[PLATFORM_MAX_PATH];
 
-		gDuckModels.GetString(i, model, PLATFORM_MAX_PATH);
+		gDuckModels.GetString(i, model, sizeof(model));
 		PrecacheModel(model);
 		AddFileToDownloadsTable(model);
 	}
@@ -177,7 +177,7 @@ public void OnMapStart() {
 
 	for(int i = 1; i <= 29; i++) {
 		char sound[PLATFORM_MAX_PATH];
-		Format(sound, PLATFORM_MAX_PATH, "misc/happy_birthday_tf_%02i.wav", i);
+		Format(sound, sizeof(sound), "misc/happy_birthday_tf_%02i.wav", i);
 		PrecacheSound(sound);
 	}
 
@@ -253,7 +253,7 @@ public void SetDuckModel(any entity) {
 		int index = GetRandomInt(0, gDuckModels.Length -1);
 		char model[PLATFORM_MAX_PATH];
 
-		gDuckModels.GetString(index, model, PLATFORM_MAX_PATH);
+		gDuckModels.GetString(index, model, sizeof(model));
 
 		SetEntityModel(entity, model);
 		SetEntPropFloat(entity, Prop_Data, "m_flModelScale", 1.0);
@@ -721,7 +721,7 @@ public int UpdateDonationDisplays() {
 
 			if(!amount && gDonationTotal < divisor) { //Total is below the range of this digit, display $ sign and skip the rest
 				digitsRequired += 1;
-				digits[i] = 111.0; //111th frame is empty
+				digits[i] = 111.0; //111th frame is $ on its own
 				break;
 			} else if((amount && amount < 10.0) && (gDonationTotal < (divisor * 100))) { //Total is within range but only uses one of the 2 numbers, display with $ sign
 				digitsRequired += 2;
@@ -771,7 +771,7 @@ public int UpdateDonationDisplays() {
 		if(milestone) {
 			char sound[PLATFORM_MAX_PATH];
 
-			Format(sound, PLATFORM_MAX_PATH, "misc/happy_birthday_tf_%02i.wav", GetRandomInt(1, 29));
+			Format(sound, sizeof(sound), "misc/happy_birthday_tf_%02i.wav", GetRandomInt(1, 29));
 
 			EmitSoundToAll(sound, entity[DDDigits][2]);
 			TE_Particle("bday_confetti", NULL_VECTOR, NULL_VECTOR, NULL_VECTOR, entity[DDDigits][1]);

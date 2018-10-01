@@ -42,13 +42,13 @@ stock void ParseMapConfig(KeyValues kv) {
 		strcopy(configEntry[CETargetname], 64, keyName);
 
 		//If entry is a regex then save as ConfigRegex
-		if(configEntry[CERegex] && !configEntry[CEHide]) {
+		if(configEntry[CERegex]) {
 			RegexError errorType;
 			char error[64];
 			Regex regex = new Regex(keyName, 0, error, sizeof(error), errorType);
 
 			if(errorType != REGEX_ERROR_NONE) {
-				PrintToServer("Error in regex '%s': %s", keyName, error);
+				LogError("Config: Error in regex '%s': %s", keyName, error);
 				continue;
 			}
 

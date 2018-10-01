@@ -4,14 +4,18 @@
 #include <halflife>
 #include <SteamWorks>
 #include <smjansson>
+#include <socket>
 
-#pragma semicolon 1
 #pragma newdecls required
+#pragma semicolon 1
 
 #define PLUGIN_VERSION "1.1"
 #define HOLOGRAM_MODEL "models/toth/cappoint_hologram.mdl"
-#define CAMPAIGN_URL "https://tipofthehats.org/stats"
-// #define _DEBUG 1
+
+#define SOCKET_HOST "localhost"
+#define SOCKET_PORT 8124
+#define FALLBACK_URL "https://tipofthehats.org/stats"
+#define _DEBUG 1
 
 public Plugin myinfo = 
 {
@@ -57,9 +61,14 @@ enum EntityType {
 	EntityType_Custom = 5,
 };
 
-int gDonationTotal = 0;
-int gDigitsRequired = 0;
-int gLastMilestone = 0;
+enum Socket {
+	Handle:SSocket,
+	SAttempts,
+}
+
+int gDonationTotal;
+int gDigitsRequired = 6;
+int gLastMilestone;
 
 ArrayList gDuckModels;
 ArrayList gDonationDisplays;
@@ -72,9 +81,11 @@ ConVar gDucksCvar;
 ConVar gCPsCvar;
 ConVar gDonationsCvar;
 
-Handle gDonationTimer = INVALID_HANDLE;
+Handle gFallbackTimer = INVALID_HANDLE;
+Socket gSocket[Socket];
 
 #include <toth/config>
+#include <toth/socket>
 
 public void OnPluginStart() {
 	gTFDucksCvar = FindConVar("tf_player_drop_bonus_ducks");
@@ -85,7 +96,7 @@ public void OnPluginStart() {
 	RegAdminCmd("sm_reloadtoth", Command_ReloadToth, ADMFLAG_GENERIC);
 	RegAdminCmd("sm_setdonationtotal", Command_SetDonationTotal, ADMFLAG_GENERIC);
 
-	gDuckModels = new ArrayList(PLATFORM_MAX_PATH);
+	gDuckModels = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
 	gDonationDisplays = new ArrayList(view_as<int>(DonationDisplay));
 	gConfigEntries = new StringMap();
 	gConfigRegexes = new ArrayList(view_as<int>(ConfigRegex));
@@ -108,6 +119,8 @@ public void OnMapStart() {
 	AutoExecConfig(true);
 
 	gDonationDisplays.Clear();
+	gConfigEntries.Clear();
+	gConfigRegexes.Clear();
 
 	for(int i = 0; i < gDuckModels.Length; i++) {
 		char model[PLATFORM_MAX_PATH];
@@ -178,7 +191,7 @@ public void OnConfigsExecuted() {
 	}
 
 	if(gDonationsCvar.BoolValue) {
-		ScheduleDonationRequest(true);
+		InitDonationSocket();
 	} 
 }
 
@@ -200,13 +213,13 @@ public void OnDonationsCvarChanged(ConVar convar, const char[] oldValue, const c
 	if(!convar.BoolValue) {
 		DestroyDonationDisplays();
 
-		if(gDonationTimer != INVALID_HANDLE) {
-			KillTimer(gDonationTimer);
-			gDonationTimer = INVALID_HANDLE;
+		if(gFallbackTimer != INVALID_HANDLE) {
+			KillTimer(gFallbackTimer);
+			gFallbackTimer = INVALID_HANDLE;
 		}
 	} else {
-		FindMapEntities(0);
-		ScheduleDonationRequest(true);
+		RequestFrame(FindMapEntities);
+		InitDonationSocket();
 	}
 }
 
@@ -308,16 +321,11 @@ void FindMapEntities(any unused) {
 			donationDisplay[DDType] = EntityType_Resupply;			
 		}
 
-				//Check if entity has a config entry and use if so
+		//Check if entity has a config entry and use if so
 		if(gConfigEntries.GetArray(name, configEntry[0], view_as<int>(ConfigEntry))) {
 			#if defined _DEBUG
 				PrintToServer("Entity %s has config entry", name);
 			#endif
-
-			if(configEntry[CEHide]) {
-				PrintToServer("Donation display for %s hidden", name);
-				continue;
-			}
 
 			donationDisplay[DDScale] = configEntry[CEScale];
 			
@@ -359,6 +367,14 @@ void FindMapEntities(any unused) {
 					donationDisplay[DDRotation][2] = configEntry[CERotation][2];
 				}
 			}
+		}
+
+		if(configEntry[CEHide]) {
+			#if defined _DEBUG
+				PrintToServer("Donation display for %s hidden", name);
+			#endif
+			
+			continue;
 		}
 
 		//If entity should have a donation display create it
@@ -602,9 +618,9 @@ int CreateDonationDigit(bool comma, bool startBlank = false) {
 }
 
 void ScheduleDonationRequest(bool immediate = false) {
-	if(gDonationTimer != INVALID_HANDLE) {
-		KillTimer(gDonationTimer);
-		gDonationTimer = INVALID_HANDLE;
+	if(gFallbackTimer != INVALID_HANDLE) {
+		KillTimer(gFallbackTimer);
+		gFallbackTimer = INVALID_HANDLE;
 	}
 
 	if(!gDonationsCvar.BoolValue) {
@@ -612,29 +628,27 @@ void ScheduleDonationRequest(bool immediate = false) {
 	}
 
 	#if defined _DEBUG
-	PrintToServer("Scheduling donation request");
+		LogMessage("HTTP: Scheduling donation request");
 	#endif
 
-	gDonationTimer = CreateTimer(immediate ? 0.1 : 5.0, MakeDonationRequest);
+	gFallbackTimer = CreateTimer(immediate ? 0.1 : 5.0, MakeDonationRequest);
 }
 
 public Action MakeDonationRequest(Handle timer, any data) {
 	#if defined _DEBUG
-	PrintToServer("Making donation request");
+		LogMessage("HTTP: Making donation request");
 	#endif
 
-	Handle request = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, CAMPAIGN_URL);
-
-	SteamWorks_SetHTTPRequestHeaderValue(request, "Authorization", "Bearer d19ceb915b719fb02a1cdc5cc60c3d8ee73cd4d69f067db138d93320595e08f1");
+	Handle request = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, FALLBACK_URL);
 
 	SteamWorks_SetHTTPCallbacks(request, OnTotalRequestCompleted);
 
 	if(!SteamWorks_SendHTTPRequest(request)) {
-		LogError("Donation total HTTP request failed");
+		LogError("HTTP: Donation total HTTP request failed");
 		ScheduleDonationRequest();
 	}
 
-	gDonationTimer = INVALID_HANDLE;
+	gFallbackTimer = INVALID_HANDLE;
 	return Plugin_Stop;
 }
 
@@ -656,6 +670,10 @@ public int OnTotalRequestCompleted(Handle request, bool failure, bool successful
 		int newTotal = ParseTotalJsonResponse(sBody);
 
 		if(newTotal > 0 && newTotal != gDonationTotal) {
+			#if defined _DEBUG
+			LogMessage("HTTP: New total received %d", newTotal);
+			#endif
+
 			gDonationTotal = newTotal;
 			UpdateDonationDisplays();
 		}
@@ -669,14 +687,14 @@ public int ParseTotalJsonResponse(const char[] json) {
 	char total[16];
 
 	if(parsed == INVALID_HANDLE) {
-		LogError("Invalid json (failed to parse)");
+		LogError("HTTP: Invalid json (failed to parse)");
 
 		return -1;
 	}
 
 
 	if(json_object_get_string(parsed, "total", total, sizeof(total)) == -1) {
-		LogError("Invalid json (invalid total)");
+		LogError("HTTP: Invalid json (invalid total)");
 
 		return -1;
 	}
@@ -717,6 +735,7 @@ public int UpdateDonationDisplays() {
 			divisor *= 100;
 		}
 	} else {
+		digitsRequired = 6;
 		digits[0] = 113.0;
 		digits[1] = 113.0;
 		digits[2] = 113.0;

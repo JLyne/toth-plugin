@@ -26,6 +26,8 @@ public Action RetryDonationSocket(Handle timer, any data) {
 		return;	
 	}
 
+	gSocket[SAttempts] = 0;
+
 	InitDonationSocket();
 }
 

@@ -12,8 +12,8 @@
 #define PLUGIN_VERSION "1.1"
 #define HOLOGRAM_MODEL "models/toth/cappoint_hologram.mdl"
 
-#define SOCKET_HOST "localhost"
-#define SOCKET_PORT 8124
+#define SOCKET_HOST "31.186.251.175"
+#define SOCKET_PORT 3000
 #define FALLBACK_URL "https://tipofthehats.org/stats"
 #define _DEBUG 1
 

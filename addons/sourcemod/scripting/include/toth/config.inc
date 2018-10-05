@@ -17,6 +17,12 @@ stock bool LoadMapConfig() {
 		return false;
 	}
 
+	ReplaceString(map, sizeof(map), "workshop/", "");
+
+	#if defined _DEBUG
+	PrintToServer("Checking for config entry for map: %s", map);
+	#endif
+
 	if(config.JumpToKey(map, false)) {
 		config.GotoFirstSubKey(false);
 		ParseMapConfig(config);

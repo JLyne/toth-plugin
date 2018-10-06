@@ -550,7 +550,9 @@ void DestroyDonationDisplays() {
 		gDonationDisplays.GetArray(i, entity[0], view_as<int>(DonationDisplay));
 
 		for(int j = 0; j < 4; j++) {
-			AcceptEntityInput(entity[DDDigits][j], "Kill");
+			if(IsValidEntity(entity[DDDigits][j])) {
+				AcceptEntityInput(entity[DDDigits][j], "Kill");
+			}
 		}
 	}
 

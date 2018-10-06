@@ -20,7 +20,7 @@ stock bool LoadMapConfig() {
 	ReplaceString(map, sizeof(map), "workshop/", "");
 
 	#if defined _DEBUG
-	LogMessage("Searching for config entry for map: %s", map);
+	LogMessage("Checking for config entry for map: %s", map);
 	#endif
 
 	if(config.JumpToKey(map, false)) {

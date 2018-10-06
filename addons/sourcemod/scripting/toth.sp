@@ -63,6 +63,8 @@ enum EntityType {
 
 enum Socket {
 	Handle:SSocket,
+	Handle:SHeartbeatTimer,
+	Handle:STimeoutTimer,
 	SAttempts,
 }
 
